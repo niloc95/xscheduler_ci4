@@ -29,6 +29,13 @@ const TIER_NAME = 65;
 const TIER_SERVICE = 100;
 const TIER_STATUS = 150;
 
+// Tablet density (768–1299px): the full time-grid is cramped, so cap every block
+// to the "time + customer name" tier — full detail is one tap away in the modal.
+// (Phones use the agenda list; >=1300px keeps full detail.) SSR-safe guard.
+const tabletDensityQuery = typeof window !== 'undefined' && window.matchMedia
+    ? window.matchMedia('(min-width: 768px) and (max-width: 1299px)')
+    : { matches: false };
+
 // Status colors as Tailwind class sets — day-view uses class-based styling (not hex)
 const STATUS_META = {
     confirmed:   { label: 'Confirmed',  bg: 'bg-emerald-100 dark:bg-emerald-900/40', text: 'text-emerald-700 dark:text-emerald-300', dot: 'bg-emerald-500' },
@@ -312,9 +319,16 @@ export class DayView {
         const lightBg = `${providerColor}18`;
         const borderCol = providerColor;
 
+        // On tablet, clamp the content tier to "time + customer name" regardless of
+        // the block's real height. Geometry (top/height on the wrapper below) still
+        // uses the true `height`, so positioning/overlap is unaffected.
+        const effectiveHeight = tabletDensityQuery.matches
+            ? Math.min(height, TIER_NAME - 1)
+            : height;
+
         let innerHtml;
 
-        if (height < TIER_TIME_ONLY) {
+        if (effectiveHeight < TIER_TIME_ONLY) {
             innerHtml = `
                 <div class="flex items-center gap-1 h-full overflow-hidden px-1.5">
                     <span class="text-[10px] font-semibold leading-none whitespace-nowrap" data-style='${this._s({color: providerColor})}'>${startTime}</span>
@@ -322,7 +336,7 @@ export class DayView {
                     <span class="text-[10px] font-medium truncate text-gray-700 dark:text-gray-200 leading-none">${escapeHtml(customerName)}</span>
                 </div>
             `;
-        } else if (height < TIER_NAME) {
+        } else if (effectiveHeight < TIER_NAME) {
             innerHtml = `
                 <div class="flex flex-col justify-center h-full overflow-hidden px-2 py-1 gap-0.5">
                     <div class="flex items-center justify-between gap-1">
@@ -332,7 +346,7 @@ export class DayView {
                     <div class="text-xs font-semibold truncate text-gray-900 dark:text-white leading-snug">${escapeHtml(customerName)}</div>
                 </div>
             `;
-        } else if (height < TIER_SERVICE) {
+        } else if (effectiveHeight < TIER_SERVICE) {
             innerHtml = `
                 <div class="flex flex-col h-full overflow-hidden px-2 py-1.5 gap-1">
                     <div class="flex items-center justify-between gap-1.5">
@@ -343,7 +357,7 @@ export class DayView {
                     ${serviceName ? `<div class="text-[11px] truncate text-gray-500 dark:text-gray-400 leading-none flex items-center gap-1"><span class="material-symbols-outlined text-[11px]">spa</span>${escapeHtml(serviceName)}</div>` : ''}
                 </div>
             `;
-        } else if (height < TIER_STATUS) {
+        } else if (effectiveHeight < TIER_STATUS) {
             innerHtml = `
                 <div class="flex flex-col h-full overflow-hidden px-2.5 py-2 gap-1.5">
                     <div class="flex items-center justify-between gap-1">

@@ -26,6 +26,13 @@
 .material-symbols-outlined { font-family: 'Material Symbols Outlined'; }
 .material-symbols-rounded   { font-family: 'Material Symbols Rounded'; }
 
+// Weight modifier — heavier stroke (e.g. nav chevrons). Replaces the whole
+// font-variation-settings property, so FILL/GRAD/opsz are restated.
+.material-symbols-outlined.is-wght-600,
+.material-symbols-rounded.is-wght-600 {
+  font-variation-settings: 'FILL' 0, 'wght' 600, 'GRAD' 0, 'opsz' 24;
+}
+
 // Material Icons Component Classes
 .material-icon {
   font-family: 'Material Symbols Outlined';

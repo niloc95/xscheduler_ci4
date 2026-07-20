@@ -11,6 +11,7 @@ import { TodayView } from './scheduler-today-view.js';
 import { MonthView } from './scheduler-month-view.js';
 import { WeekView } from './scheduler-week-view.js';
 import { DayView } from './scheduler-day-view.js';
+import { AgendaView } from './scheduler-agenda-view.js';
 import { RightPanel } from './right-panel.js';
 import { DragDropManager } from './scheduler-drag-drop.js';
 import { SettingsManager } from './settings-manager.js';
@@ -67,7 +68,8 @@ export class SchedulerCore {
             today: new TodayView(this),
             month: new MonthView(this),
             week: new WeekView(this),
-            day: new DayView(this)
+            day: new DayView(this),
+            agenda: new AgendaView(this)
         };
         
         // Initialize right panel module
@@ -215,7 +217,7 @@ export class SchedulerCore {
             this.currentDate = this.currentDate.setZone(this.options.timezone);
             this.debugLog(`🌍 Timezone: ${this.options.timezone}`);
 
-            if (this.options?.initialView && ['day', 'week', 'month'].includes(this.options.initialView)) {
+            if (this.options?.initialView && ['day', 'week', 'month', 'agenda'].includes(this.options.initialView)) {
                 this.currentView = this.options.initialView;
             }
 
@@ -530,6 +532,7 @@ export class SchedulerCore {
 
         switch (this.currentView) {
             case 'day':
+            case 'agenda':
                 start = this.currentDate.startOf('day');
                 end = this.currentDate.endOf('day');
                 break;
@@ -838,7 +841,7 @@ export class SchedulerCore {
      */
 
     async changeView(viewName) {
-        if (!['today', 'day', 'week', 'month'].includes(viewName)) {
+        if (!['today', 'day', 'week', 'month', 'agenda'].includes(viewName)) {
             console.error('Invalid view:', viewName);
             return;
         }
@@ -868,6 +871,7 @@ export class SchedulerCore {
         let nextDate = this.currentDate;
         switch (this.currentView) {
             case 'day':
+            case 'agenda':
                 nextDate = this.currentDate.plus({ days: 1 });
                 break;
             case 'week':
@@ -884,6 +888,7 @@ export class SchedulerCore {
         let prevDate = this.currentDate;
         switch (this.currentView) {
             case 'day':
+            case 'agenda':
                 prevDate = this.currentDate.minus({ days: 1 });
                 break;
             case 'week':

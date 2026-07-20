@@ -149,70 +149,95 @@
   display: grid;
   gap: 1rem;
 
+  // Mobile: Today's Schedule first, Provider Availability below (per mobile UX brief)
+  .dashboard-grid__schedule { order: 1; }
+  .dashboard-grid__providers { order: 2; }
+
   @media (min-width: 1024px) {
     grid-template-columns: 1fr 1fr;
+
+    // Desktop: Providers left, Schedule right (existing split preserved)
+    .dashboard-grid__providers { order: 1; }
+    .dashboard-grid__schedule { order: 2; }
   }
 }
 
-.metric-mini {
+// KPI cards — clickable navigation shortcuts (min 44px touch target)
+.metric-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0.75rem 0.5rem;
+  justify-content: center;
+  min-height: 5.5rem; // comfortably above the 44px touch-target floor
+  padding: 0.875rem 0.5rem;
   border-radius: 0.625rem;
   background: var(--metric-bg, #f3f4f6);
-  gap: 0.1rem;
+  gap: 0.15rem;
+  text-align: center;
+  text-decoration: none;
+  color: inherit;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 
-  &:hover {
+  &:hover,
+  &:focus,
+  &:focus-visible {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    text-decoration: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary-500, #003049);
+    outline-offset: 2px;
   }
 
   .dark & {
     background: var(--metric-bg-dark, #1f2937);
 
-    &:hover {
+    &:hover,
+    &:focus,
+    &:focus-visible {
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
   }
 }
 
-.metric-mini-icon {
-  font-size: 1.1rem;
+.metric-card-icon {
+  font-size: 1.25rem;
   line-height: 1;
-  margin-bottom: 0.1rem;
+  margin-bottom: 0.15rem;
 }
 
-// Metric color variants — light bg / slightly lighter dark bg for readability
-.metric-mini-blue {
+.metric-card-value {
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.metric-card-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+// KPI color variants — light bg / darker dark bg for readability
+.metric-card-blue {
   --metric-bg: #dbeafe;
-  --metric-bg-dark: #1e3a8a; // blue-900, up from #1e3a5f
+  --metric-bg-dark: #1e3a8a; // blue-900
 }
 
-.metric-mini-green {
+.metric-card-green {
   --metric-bg: #d1fae5;
-  --metric-bg-dark: #065f46; // emerald-800, up from #064e3b
+  --metric-bg-dark: #065f46; // emerald-800
 }
 
-.metric-mini-yellow {
+.metric-card-yellow {
   --metric-bg: #fef3c7;
-  --metric-bg-dark: #92400e; // amber-800, up from #78350f
+  --metric-bg-dark: #92400e; // amber-800
 }
 
-.metric-mini-red {
-  --metric-bg: #fee2e2;
-  --metric-bg-dark: #991b1b; // red-800, up from #7f1d1d
-}
-
-.metric-mini-indigo {
+.metric-card-indigo {
   --metric-bg: #e0e7ff;
-  --metric-bg-dark: #3730a3; // indigo-800, up from #312e81
-}
-
-.metric-mini-purple {
-  --metric-bg: #f3e8ff;
-  --metric-bg-dark: #6b21a8; // purple-800
+  --metric-bg-dark: #3730a3; // indigo-800
 }
 
 .dashboard-landing .provider-grid {

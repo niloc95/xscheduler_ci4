@@ -92,12 +92,17 @@ class DashboardPageService
         $serviceStats['bookings'] = $this->bookingMetrics->getTotalBookings($scopeProviderId);
         $monthlyRevenue = $this->appointmentModel->getRevenue('month');
         $weeklyRevenue = $this->appointmentModel->getRevenue('week');
+        $customerCount = $this->dashboardService->getCustomerCount();
+        $pendingPaymentsCount = $this->dashboardService->getPendingPaymentsCount($scopeProviderId);
 
         return [
             'user' => $currentUser,
             'context' => $context,
             'appointment_scope' => $appointmentScope,
             'metrics' => $metrics,
+            'customer_count' => $customerCount,
+            'pending_payments' => $pendingPaymentsCount,
+            'monthly_revenue' => $monthlyRevenue,
             'schedule' => $schedule,
             'alerts' => $alerts,
             'upcoming' => $upcoming,
@@ -157,6 +162,9 @@ class DashboardPageService
             'alerts' => [],
             'upcoming' => [],
             'availability' => [],
+            'customer_count' => 0,
+            'pending_payments' => 0,
+            'monthly_revenue' => 0,
             'stats' => [
                 'total_users' => 0,
                 'active_sessions' => 0,
@@ -238,6 +246,13 @@ class DashboardPageService
         $providerScope = $this->authService->getProviderScope($userRole, $providerId, $currentUser);
         $metrics = $this->dashboardService->getTodayMetrics($providerScope);
 
+        // Augment the today-metrics with the KPI-card values so the landing
+        // page's live poll can keep Customers / Revenue / Pending Payments fresh.
+        helper('currency');
+        $metrics['customers'] = $this->dashboardService->getCustomerCount();
+        $metrics['pending_payments'] = $this->dashboardService->getPendingPaymentsCount($providerScope);
+        $metrics['revenue_formatted'] = format_currency($this->appointmentModel->getRevenue('month'));
+
         return [
             'statusCode' => 200,
             'payload' => [
@@ -260,6 +275,9 @@ class DashboardPageService
                 'pending' => 0,
                 'confirmed' => 0,
                 'cancelled' => 0,
+                'customers' => 0,
+                'pending_payments' => 0,
+                'revenue_formatted' => null,
             ],
         ];
     }

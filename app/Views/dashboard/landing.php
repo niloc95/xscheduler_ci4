@@ -15,6 +15,8 @@
  * - $provider_scope: Provider ID for filtering (null = admin)
  */
 
+helper('currency');
+
 $context = $context ?? [];
 $metrics = $metrics ?? [];
 $schedule = $schedule ?? [];
@@ -25,10 +27,14 @@ $userName = $context['user_name'] ?? 'User';
 
 // Calculate additional metrics
 $pendingCount = $metrics['pending'] ?? 0;
-$confirmedCount = $metrics['confirmed'] ?? 0;
-$cancelledCount = $metrics['cancelled'] ?? 0;
 $totalProviders = count($availability);
 $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ?? '') === 'working'));
+
+// KPI card values (brand set: Today's Appointments / Customers / Revenue / Pending Payments)
+$todayCount = $metrics['total'] ?? 0;
+$customerCount = $customer_count ?? 0;
+$pendingPayments = $pending_payments ?? 0;
+$monthlyRevenue = $monthly_revenue ?? 0;
 ?>
 
 <?= $this->extend('layouts/app') ?>
@@ -43,8 +49,8 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
 <?= $this->section('content') ?>
 <!-- Quick Actions -->
 <div class="xs-page-actions">
-    <a href="<?= base_url('/appointments/create') ?>" 
-       class="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
+    <a href="<?= base_url('/appointments/create') ?>"
+       class="inline-flex items-center px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors">
         <span class="material-symbols-outlined text-sm mr-1.5">add</span>
         New Appointment
     </a>
@@ -57,38 +63,28 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
 
 <!-- Page Body -->
 <div class="xs-page-body dashboard-landing">
-    <!-- Metrics Row -->
-    <div class="grid grid-cols-3 lg:grid-cols-6 gap-3" id="metrics-container">
-        <div class="metric-mini metric-mini-blue">
-            <span class="material-symbols-outlined metric-mini-icon text-blue-500 dark:text-blue-400">today</span>
-            <span class="text-xl font-bold text-blue-700 dark:text-blue-300" id="metric-total"><?= $metrics['total'] ?? 0 ?></span>
-            <span class="text-xs text-blue-600 dark:text-blue-400">Today</span>
-        </div>
-        <div class="metric-mini metric-mini-purple">
-            <span class="material-symbols-outlined metric-mini-icon text-purple-500 dark:text-purple-400">schedule</span>
-            <span class="text-xl font-bold text-purple-700 dark:text-purple-300" id="metric-upcoming"><?= $metrics['upcoming'] ?? 0 ?></span>
-            <span class="text-xs text-purple-600 dark:text-purple-400">Upcoming</span>
-        </div>
-        <div class="metric-mini metric-mini-yellow">
-            <span class="material-symbols-outlined metric-mini-icon text-amber-500 dark:text-amber-400">pending_actions</span>
-            <span class="text-xl font-bold text-amber-700 dark:text-amber-300" id="metric-pending"><?= $pendingCount ?></span>
-            <span class="text-xs text-amber-600 dark:text-amber-400">Pending</span>
-        </div>
-        <div class="metric-mini metric-mini-green">
-            <span class="material-symbols-outlined metric-mini-icon text-green-500 dark:text-green-400">event_available</span>
-            <span class="text-xl font-bold text-green-700 dark:text-green-300" id="metric-confirmed"><?= $confirmedCount ?></span>
-            <span class="text-xs text-green-600 dark:text-green-400">Confirmed</span>
-        </div>
-        <div class="metric-mini metric-mini-red">
-            <span class="material-symbols-outlined metric-mini-icon text-red-500 dark:text-red-400">event_busy</span>
-            <span class="text-xl font-bold text-red-700 dark:text-red-300" id="metric-cancelled"><?= $cancelledCount ?></span>
-            <span class="text-xs text-red-600 dark:text-red-400">Cancelled</span>
-        </div>
-        <div class="metric-mini metric-mini-indigo">
-            <span class="material-symbols-outlined metric-mini-icon text-indigo-500 dark:text-indigo-400">people</span>
-            <span class="text-xl font-bold text-indigo-700 dark:text-indigo-300"><?= $workingProviders ?>/<?= $totalProviders ?></span>
-            <span class="text-xs text-indigo-600 dark:text-indigo-400">Active</span>
-        </div>
+    <!-- KPI Cards — clickable navigation shortcuts -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3" id="metrics-container">
+        <a href="<?= base_url('/appointments?filter=today') ?>" class="metric-card metric-card-blue" aria-label="Today's appointments">
+            <span class="material-symbols-outlined metric-card-icon text-blue-500 dark:text-blue-400">event</span>
+            <span class="metric-card-value text-blue-700 dark:text-blue-300" id="metric-today"><?= $todayCount ?></span>
+            <span class="metric-card-label text-blue-600 dark:text-blue-400">Today's Appointments</span>
+        </a>
+        <a href="<?= base_url('/customer-management') ?>" class="metric-card metric-card-indigo" aria-label="Customers">
+            <span class="material-symbols-outlined metric-card-icon text-indigo-500 dark:text-indigo-400">group</span>
+            <span class="metric-card-value text-indigo-700 dark:text-indigo-300" id="metric-customers"><?= $customerCount ?></span>
+            <span class="metric-card-label text-indigo-600 dark:text-indigo-400">Customers</span>
+        </a>
+        <a href="<?= base_url('/analytics') ?>" class="metric-card metric-card-green" aria-label="Revenue this month">
+            <span class="material-symbols-outlined metric-card-icon text-green-500 dark:text-green-400">payments</span>
+            <span class="metric-card-value text-green-700 dark:text-green-300" id="metric-revenue"><?= format_currency($monthlyRevenue) ?></span>
+            <span class="metric-card-label text-green-600 dark:text-green-400">Revenue (This Month)</span>
+        </a>
+        <a href="<?= base_url('/analytics/revenue') ?>" class="metric-card metric-card-yellow" aria-label="Pending payments">
+            <span class="material-symbols-outlined metric-card-icon text-amber-500 dark:text-amber-400">account_balance_wallet</span>
+            <span class="metric-card-value text-amber-700 dark:text-amber-300" id="metric-pending-payments"><?= $pendingPayments ?></span>
+            <span class="metric-card-label text-amber-600 dark:text-amber-400">Pending Payments</span>
+        </a>
     </div>
     
     <!-- Pending Alert Banner (if any) -->
@@ -110,8 +106,8 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
     <!-- Main Grid: Providers + Schedule -->
     <div class="dashboard-grid">
         
-        <!-- Left: Provider Availability Grid -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <!-- Provider Availability Grid (left on desktop, below schedule on mobile) -->
+        <div class="dashboard-grid__providers bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Providers</h2>
                 <span class="text-xs text-gray-500 dark:text-gray-400"><?= $workingProviders ?> available</span>
@@ -246,11 +242,11 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
             <?php endif; ?>
         </div>
         
-        <!-- Right: Today's Schedule -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <!-- Today's Schedule (right on desktop, first on mobile) -->
+        <div class="dashboard-grid__schedule bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Today's Schedule</h2>
-                <a href="<?= base_url('/appointments?filter=today') ?>" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                <a href="<?= base_url('/appointments?filter=today') ?>" class="text-xs text-primary-600 dark:text-primary-400 hover:underline">
                     View all →
                 </a>
             </div>
@@ -331,11 +327,10 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
         .then(data => {
             authFailureCount = 0;
             const m = data.data || data;
-            updateValue('metric-total',     m.total);
-            updateValue('metric-upcoming',  m.upcoming);
-            updateValue('metric-pending',   m.pending);
-            updateValue('metric-confirmed', m.confirmed);
-            updateValue('metric-cancelled', m.cancelled);
+            updateValue('metric-today',            m.total);
+            updateValue('metric-customers',        m.customers);
+            updateValue('metric-pending-payments', m.pending_payments);
+            updateText('metric-revenue',           m.revenue_formatted);
             metricsEl.classList.remove('loading-pulse');
             isRefreshingMetrics = false;
             metricsTimer = setTimeout(refreshMetrics, METRICS_INTERVAL);
@@ -356,8 +351,16 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
     }
 
     function updateValue(id, val) {
+        if (val === undefined || val === null) return;
         const el = document.getElementById(id);
         if (el && parseInt(el.textContent) !== val) { el.textContent = val; }
+    }
+
+    // Text (non-numeric) update — used for the pre-formatted currency value.
+    function updateText(id, val) {
+        if (val === undefined || val === null) return;
+        const el = document.getElementById(id);
+        if (el && el.textContent !== String(val)) { el.textContent = String(val); }
     }
 
     // ─── Schedule polling ────────────────────────────────────────────────────

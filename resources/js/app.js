@@ -34,6 +34,7 @@ import { setupAdvancedFilterPanel } from './modules/filters/advanced-filters.js'
 
 // Import scheduler UI module
 import { setupSchedulerToolbar } from './modules/scheduler/scheduler-ui.js';
+import { initSchedulerPanelDrawer } from './modules/scheduler/scheduler-panel-drawer.js';
 import { initSettingsPageEnhancements } from './modules/settings/settings-page.js';
 import { initIntegrationHub } from './modules/settings/integration-hub.js';
 import { initCustomerManagementSearch } from './modules/customer-management/customer-search.js';
@@ -279,11 +280,14 @@ async function initScheduler() {
         // Get initial date and active status from data attributes
         const initialDate = schedulerContainer.dataset.initialDate || new Date().toISOString().split('T')[0];
         const activeStatusFilter = schedulerContainer.dataset.activeStatus || '';
-        
+
+        // On phones the time-grid is unreadable — default to the agenda (list) view.
+        const initialView = window.matchMedia('(max-width: 767px)').matches ? 'agenda' : 'day';
+
         // Create scheduler instance
         const scheduler = new SchedulerCore('appointments-inline-calendar', {
             mode: 'server',
-            initialView: 'day',
+            initialView,
             initialDate: initialDate,
             timezone: window.appTimezone,
             apiBaseUrl: `${getBaseUrl()}/api/appointments`,
@@ -297,6 +301,25 @@ async function initScheduler() {
 
         // Wire up toolbar navigation buttons
         setupSchedulerToolbar(scheduler, { setupAdvancedFilterPanel });
+
+        // Wire up the responsive side-panel drawer / bottom sheet (below 1300px)
+        initSchedulerPanelDrawer();
+
+        // Re-render the calendar when crossing the tablet density boundary so the
+        // Day-view block detail level updates live (e.g. tablet rotation). Bound
+        // once for the page lifetime — the handler reads the current scheduler and
+        // no-ops when the scheduler page isn't mounted, so SPA nav needs no teardown.
+        if (!window.__xsSchedulerDensityBound) {
+            window.__xsSchedulerDensityBound = true;
+            window.matchMedia('(min-width: 768px) and (max-width: 1299px)')
+                .addEventListener('change', () => {
+                    const s = window.scheduler;
+                    if (s && typeof s.render === 'function' &&
+                        document.getElementById('appointments-inline-calendar')) {
+                        s.render();
+                    }
+                });
+        }
 
         // Store scheduler instance globally for debugging
         window.scheduler = scheduler;

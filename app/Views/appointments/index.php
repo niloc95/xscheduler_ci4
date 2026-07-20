@@ -14,10 +14,7 @@
  * Sections are injected into the main dashboard layout.
  */
 ?>
-<?= $this->extend('layouts/dashboard') ?>
-
-<?php // Override stats grid to two responsive columns ?>
-<?= $this->section('dashboard_stats_class') ?>grid grid-cols-1 md:grid-cols-2 gap-6<?= $this->endSection() ?>
+<?= $this->extend('layouts/app') ?>
 
 <?php // Sidebar navigation: highlights the Appointments section ?>
 <?= $this->section('sidebar') ?>
@@ -25,17 +22,8 @@
 <?= $this->endSection() ?>
 
 <?php // Page title and subtitle: dynamic based on user role ?>
-<?= $this->section('page_title') ?><?= esc($title) ?><?= $this->endSection() ?>
-<?= $this->section('page_subtitle') ?><?= $user_role === 'customer' ? 'View and manage your upcoming and past appointments' : 'Manage appointments for your business' ?><?= $this->endSection() ?>
-
-<?php // Action button handled with filters; no standalone actions block ?>
-<?= $this->section('dashboard_actions') ?><?= $this->endSection() ?>
-
-<?php // Stats summary cards: condensed to Upcoming and Completed ?>
-<?= $this->section('dashboard_stats') ?><?= $this->endSection() ?>
-
-<?php // Filters section empty — controls are in the fixed header now ?>
-<?= $this->section('dashboard_filters') ?><?= $this->endSection() ?>
+<?= $this->section('header_title') ?><?= esc($title) ?><?= $this->endSection() ?>
+<?= $this->section('header_subtitle') ?><?= $user_role === 'customer' ? 'View and manage your upcoming and past appointments' : 'Manage appointments for your business' ?><?= $this->endSection() ?>
 
 <?php // Controls injected into the fixed header bar so they never scroll away ?>
 <?= $this->section('header_controls') ?>
@@ -101,6 +89,12 @@
 
                 <div class="appointments-toolbar__view-switcher inline-flex items-center rounded-full border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 p-0.5 shadow-sm"
                      role="group" aria-label="Calendar view">
+                    <button type="button" data-calendar-action="agenda"
+                            class="appointments-toolbar__view-btn view-toggle-btn inline-flex items-center gap-1 px-3.5 py-2 rounded-full text-sm font-semibold whitespace-nowrap text-gray-600 dark:text-gray-400 transition-all duration-150"
+                            data-view="agenda" title="Agenda list">
+                        <span class="material-symbols-outlined text-base leading-none">view_agenda</span>
+                        <span>Agenda</span>
+                    </button>
                     <button type="button" data-calendar-action="day"
                             class="appointments-toolbar__view-btn view-toggle-btn px-3.5 py-2 rounded-full text-sm font-semibold whitespace-nowrap text-gray-600 dark:text-gray-400 transition-all duration-150"
                             data-view="day">Day</button>
@@ -119,7 +113,7 @@
                 <button type="button" data-calendar-action="prev"
                         class="p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
                         title="Previous">
-                    <span class="material-symbols-outlined text-base leading-none" style="font-variation-settings:'wght' 600;">chevron_left</span>
+                    <span class="material-symbols-outlined is-wght-600 text-base leading-none">chevron_left</span>
                 </button>
                 <div id="scheduler-date-display"
                      class="appointments-toolbar__date-display px-1.5 text-sm font-semibold text-gray-900 dark:text-white min-w-[104px] text-center select-none tracking-tight">
@@ -128,7 +122,7 @@
                 <button type="button" data-calendar-action="next"
                         class="p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
                         title="Next">
-                    <span class="material-symbols-outlined text-base leading-none" style="font-variation-settings:'wght' 600;">chevron_right</span>
+                    <span class="material-symbols-outlined is-wght-600 text-base leading-none">chevron_right</span>
                 </button>
                 <input type="date" id="scheduler-date-input" class="sr-only" aria-label="Jump to date" tabindex="-1">
                 <button type="button" data-calendar-action="open-datepicker"
@@ -141,14 +135,25 @@
         </div>
         <!-- /Nav cluster -->
 
-            <!-- Filters: desktop only, pinned to the right edge of Tier 1 -->
-            <button type="button" id="advanced-filter-toggle" data-advanced-filter-toggle="true"
-                    class="appointments-toolbar__filter hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium flex-shrink-0 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-primary-400 dark:hover:border-primary-500 hover:text-primary-700 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-150"
-                    title="Advanced Filters">
-                <span class="material-symbols-outlined text-sm leading-none">tune</span>
-                <span>Filters</span>
-                <span class="material-symbols-outlined text-sm leading-none transition-transform duration-200" data-filter-toggle-icon="true">expand_more</span>
-            </button>
+            <!-- Right-side controls: Overview (below 1300px) + Filters (desktop) -->
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <!-- Day Overview / Availability: opens the side panel as a drawer (tablet) or
+                     bottom sheet (mobile). Hidden at >=1300px where the panel is always visible. -->
+                <button type="button" id="scheduler-panel-toggle" class="scheduler-panel-toggle inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium flex-shrink-0 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-primary-400 dark:hover:border-primary-500 hover:text-primary-700 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-150"
+                        aria-controls="scheduler-right-panel" aria-expanded="false" title="Day overview & availability">
+                    <span class="material-symbols-outlined text-sm leading-none">overview</span>
+                    <span>Overview</span>
+                </button>
+
+                <!-- Filters: desktop only, pinned to the right edge of Tier 1 -->
+                <button type="button" id="advanced-filter-toggle" data-advanced-filter-toggle="true"
+                        class="appointments-toolbar__filter hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium flex-shrink-0 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-primary-400 dark:hover:border-primary-500 hover:text-primary-700 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-150"
+                        title="Advanced Filters">
+                    <span class="material-symbols-outlined text-sm leading-none">tune</span>
+                    <span>Filters</span>
+                    <span class="material-symbols-outlined text-sm leading-none transition-transform duration-200" data-filter-toggle-icon="true">expand_more</span>
+                </button>
+            </div>
 
         </div>
         <!-- /Tier 1 -->
@@ -240,8 +245,8 @@
     </div>
 <?= $this->endSection() ?>
 
-<?php // Split-panel scheduler content (new layout) ?>
-<?= $this->section('dashboard_content') ?>
+<?php // Split-panel scheduler content ?>
+<?= $this->section('content') ?>
     <!-- Scheduler Shell: Split-panel Layout -->
     <div class="scheduler-shell rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
         
@@ -259,16 +264,27 @@
                 </div>
             </div>
             
-            <!-- Right Panel: Provider Cards + Slot Grid -->
+            <!-- Overlay for the drawer / bottom sheet (only visible below 1300px when open) -->
+            <div class="scheduler-panel-overlay" id="scheduler-panel-overlay" hidden></div>
+
+            <!-- Right Panel: Provider Cards + Slot Grid.
+                 Static right column at >=1300px; a right drawer (tablet) or bottom sheet
+                 (mobile) below that, toggled by #scheduler-panel-toggle. -->
             <div class="right-panel" id="scheduler-right-panel">
                 <!-- Header Section -->
-                <div class="rp-header">
-                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white" id="rp-title">
-                        Providers
-                    </h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1" id="rp-subtitle">
-                        Select a provider to view availability
-                    </p>
+                <div class="rp-header flex items-start justify-between gap-2">
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-900 dark:text-white" id="rp-title">
+                            Providers
+                        </h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1" id="rp-subtitle">
+                            Select a provider to view availability
+                        </p>
+                    </div>
+                    <!-- Close: only shown when the panel is a drawer/sheet (below 1300px) -->
+                    <button type="button" id="scheduler-panel-close" class="scheduler-panel-close inline-flex items-center justify-center rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-colors" title="Close" aria-label="Close panel">
+                        <span class="material-symbols-outlined text-xl leading-none">close</span>
+                    </button>
                 </div>
                 
                 <!-- Body Section (Scrollable) -->

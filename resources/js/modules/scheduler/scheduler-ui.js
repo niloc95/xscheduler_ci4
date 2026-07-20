@@ -72,7 +72,7 @@ export function renderProviderLegend(scheduler) {
  */
 export function setupSchedulerToolbar(scheduler, { setupAdvancedFilterPanel } = {}) {
     // View buttons
-    document.querySelectorAll('[data-calendar-action="day"], [data-calendar-action="week"], [data-calendar-action="month"]').forEach(btn => {
+    document.querySelectorAll('[data-calendar-action="agenda"], [data-calendar-action="day"], [data-calendar-action="week"], [data-calendar-action="month"]').forEach(btn => {
         btn.addEventListener('click', async () => {
             const view = btn.dataset.calendarAction;
             try {
@@ -83,7 +83,7 @@ export function setupSchedulerToolbar(scheduler, { setupAdvancedFilterPanel } = 
                     if (b.dataset.calendarAction === view) {
                         b.classList.add('bg-primary-600', 'text-white', 'shadow-sm');
                         b.classList.remove('text-gray-600', 'dark:text-gray-400');
-                    } else if (['day', 'week', 'month'].includes(b.dataset.calendarAction)) {
+                    } else if (['agenda', 'day', 'week', 'month'].includes(b.dataset.calendarAction)) {
                         b.classList.remove('bg-primary-600', 'text-white', 'shadow-sm');
                         b.classList.add('text-gray-600', 'dark:text-gray-400');
                     }

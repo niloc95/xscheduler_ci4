@@ -227,6 +227,58 @@ class DashboardService
     }
 
     /**
+     * Count customers for the KPI card.
+     *
+     * Customers are a global entity (not provider-scoped in this app), so the
+     * count is business-wide regardless of the viewer's provider scope.
+     *
+     * @return int Total customers
+     */
+    public function getCustomerCount(): int
+    {
+        return $this->customerModel->countAllCustomers();
+    }
+
+    /**
+     * Count appointments awaiting payment for the KPI card.
+     *
+     * "Pending payment" = payment_status 'pending' (deposit due) on an
+     * appointment that has not been cancelled or marked no-show. Provider-scoped
+     * like the other dashboard metrics.
+     *
+     * @param int|int[]|null $providerId Scope: null=admin (all), int=provider, int[]=staff
+     * @return int Pending-payment appointment count
+     */
+    public function getPendingPaymentsCount(int|array|null $providerId = null): int
+    {
+        // Staff with no assignments: nothing to pay
+        if (is_array($providerId) && empty($providerId)) {
+            return 0;
+        }
+
+        // Defensive: payment columns are added by a conditional migration.
+        $db = \Config\Database::connect();
+        $hasPaymentStatus = method_exists($db, 'fieldExists')
+            ? $db->fieldExists('payment_status', 'xs_appointments')
+            : true;
+        if (!$hasPaymentStatus) {
+            return 0;
+        }
+
+        $builder = $this->appointmentModel->builder();
+        if (is_array($providerId)) {
+            $builder->whereIn('provider_id', $providerId);
+        } elseif ($providerId !== null) {
+            $builder->where('provider_id', $providerId);
+        }
+
+        return (int) $builder
+            ->where('xs_appointments.payment_status', 'pending')
+            ->whereNotIn('xs_appointments.status', ['cancelled', 'no-show', 'noshow'])
+            ->countAllResults();
+    }
+
+    /**
      * Get today's schedule snapshot (business hours only)
      * 
      * Returns appointments grouped by provider for today.

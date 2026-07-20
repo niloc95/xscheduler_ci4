@@ -108,11 +108,13 @@
 }
 
 @media (max-width: 767px) {
+    // Touch targets: >=44px per Apple/Material accessibility guidance.
     .appointments-toolbar__today-btn,
     .appointments-toolbar__view-btn,
     .appointments-toolbar__filter,
+    .scheduler-panel-toggle,
     .appointments-toolbar__date-cluster {
-        min-height: 2.375rem;
+        min-height: 2.75rem;
     }
 
     .appointments-toolbar__date-display {
@@ -333,11 +335,47 @@
 }
 
 /* ========================================
-   Responsive: Mobile Stack
-   Matches sidebar overlay breakpoint ($breakpoint-lg = 1024px) so the
-   split layout never competes with an overlaid sidebar for screen space.
+   Responsive: side panel as drawer / bottom sheet
+   ----------------------------------------
+   >=1300px  : static 62/38 split (defaults above).
+   768–1299  : calendar full width; panel is a right slide-over drawer.
+   <768px    : calendar full width; panel is a bottom sheet.
+   The panel toggle (#scheduler-panel-toggle) and its close button are hidden
+   at >=1300px where the panel is always visible.
    ======================================== */
-@media (max-width: #{$breakpoint-lg - 1px}) {
+
+// Local breakpoint for the scheduler split → drawer transition (no shared 1300 token).
+$scheduler-panel-bp: 1300px;
+
+// Overview toggle + panel close button: only meaningful below the split breakpoint.
+@media (min-width: $scheduler-panel-bp) {
+    .scheduler-panel-toggle,
+    .scheduler-panel-close {
+        display: none;
+    }
+}
+
+.scheduler-panel-close {
+    width: 2.25rem;
+    height: 2.25rem;
+    flex-shrink: 0;
+}
+
+// Backdrop for the drawer / bottom sheet.
+.scheduler-panel-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 190;
+    background: rgba(15, 23, 42, 0.5);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+
+    &.is-open {
+        opacity: 1;
+    }
+}
+
+@media (max-width: #{$scheduler-panel-bp - 1px}) {
     .content-split {
         flex-direction: column;
     }
@@ -348,11 +386,52 @@
         flex: 1;
     }
 
+    // Off-canvas surface. Fixed to the viewport so it escapes the shell's
+    // overflow:hidden. Tablet default = right drawer; overridden to a bottom
+    // sheet below 768px.
     .right-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: min(380px, 85vw);
+        max-height: none;
+        z-index: 200;
+        border-left: 1px solid var(--color-border);
+        border-top: none;
+        box-shadow: -8px 0 24px -12px rgba(15, 23, 42, 0.45);
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        will-change: transform;
+
+        &.is-open {
+            transform: translateX(0);
+        }
+    }
+
+    .dark .right-panel {
+        border-left-color: var(--color-gray-700);
+    }
+}
+
+@media (max-width: #{$breakpoint-md - 1px}) {
+    // Phones: bottom sheet instead of a side drawer.
+    .right-panel {
+        top: auto;
+        left: 0;
+        right: 0;
+        bottom: 0;
         width: 100%;
-        max-height: 40vh;
+        max-height: 85vh;
         border-left: none;
         border-top: 1px solid var(--color-border);
+        border-radius: 1rem 1rem 0 0;
+        box-shadow: 0 -8px 24px -12px rgba(15, 23, 42, 0.45);
+        transform: translateY(100%);
+
+        &.is-open {
+            transform: translateY(0);
+        }
     }
 
     .dark .right-panel {
@@ -636,5 +715,221 @@
 
     &::-webkit-scrollbar {
         display: none;
+    }
+}
+
+/* ========================================
+   Agenda / List View (mobile-first)
+   Rendered by scheduler-agenda-view.js. Vertical, fully-readable cards —
+   the default calendar view below 768px, available at any width via the toggle.
+   ======================================== */
+.agenda-view {
+    padding: 0.75rem;
+}
+
+.agenda-view__heading {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 0.5rem 0.25rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--color-gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    background: var(--color-surface-0);
+}
+
+.dark .agenda-view__heading {
+    color: var(--color-gray-400);
+    background: var(--color-gray-900);
+}
+
+.agenda-view__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+}
+
+.agenda-view__empty {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.agenda-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding: 0.875rem;
+    background: var(--color-surface-0);
+    border: 1px solid var(--color-border);
+    border-left-width: 4px;
+    border-radius: 0.625rem;
+    cursor: pointer;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+
+    &:hover,
+    &:focus-visible {
+        box-shadow: 0 4px 14px -6px rgba(15, 23, 42, 0.25);
+        transform: translateY(-1px);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--color-primary-500, #003049);
+        outline-offset: 2px;
+    }
+}
+
+.dark .agenda-card {
+    background: var(--color-gray-800);
+    border-color: var(--color-gray-700);
+}
+
+.agenda-card__main {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.agenda-card__time {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    width: 4.5rem;
+    line-height: 1.15;
+}
+
+.agenda-card__time-start {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--color-gray-900);
+}
+
+.agenda-card__time-end {
+    font-size: 0.75rem;
+    color: var(--color-gray-500);
+}
+
+.dark .agenda-card__time-start { color: #f9fafb; }
+.dark .agenda-card__time-end { color: var(--color-gray-400); }
+
+.agenda-card__details {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.agenda-card__customer {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--color-gray-900);
+    line-height: 1.25;
+}
+
+.dark .agenda-card__customer { color: #f9fafb; }
+
+.agenda-card__service {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8125rem;
+    color: var(--color-gray-500);
+    min-width: 0;
+}
+
+.dark .agenda-card__service { color: var(--color-gray-400); }
+
+.agenda-card__provider {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8125rem;
+    color: var(--color-gray-600);
+    min-width: 0;
+}
+
+.dark .agenda-card__provider { color: var(--color-gray-300); }
+
+.agenda-card__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+    border-radius: 50%;
+    font-size: 0.5625rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.agenda-card__status {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.agenda-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding-top: 0.625rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.dark .agenda-card__actions {
+    border-top-color: var(--color-gray-700);
+}
+
+.agenda-card__action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    // Touch target: >=44px per Apple/Material accessibility guidance.
+    min-height: 2.75rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-0);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-gray-700);
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+
+    &:hover {
+        border-color: var(--color-primary-400, #4b7a94);
+        color: var(--color-primary-700, #003049);
+        background: var(--color-primary-50, #eef4f7);
+    }
+}
+
+.dark .agenda-card__action {
+    background: var(--color-gray-700);
+    border-color: var(--color-gray-600);
+    color: var(--color-gray-200);
+}
+
+.agenda-card__action--danger {
+    color: var(--color-error, #d62828);
+
+    &:hover {
+        border-color: var(--color-error, #d62828);
+        color: #fff;
+        background: var(--color-error, #d62828);
+    }
+}
+
+/* ========================================
+   Adaptive density — grid appointment blocks
+   Below the split breakpoint the calendar is full-width (roomier than the old
+   62% pane), so grid blocks stay legible; tighten typography a touch on tablet
+   and enforce truncation. Phones default to the agenda view above.
+   ======================================== */
+@media (max-width: #{$scheduler-panel-bp - 1px}) and (min-width: $breakpoint-md) {
+    .appointment-block {
+        font-size: 0.8125rem;
     }
 }
