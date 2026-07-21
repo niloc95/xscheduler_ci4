@@ -10,6 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - No unreleased changes documented yet.
 
+## [2.4.1] - 2026-07-21
+
+### Added
+- feat(appointments): slimmer mobile header
+
+### Changed
+- docs(operations): document full PHPUnit CI diagnostic chain + follow-up
+
+### Fixed
+- fix(scheduler): opaque side panel & bottom sheet
+- fix(ci): force non-interactive migrate:refresh in PHPUnit job
+- fix(ci): set app.baseURL in PHPUnit test env
+- fix(ci): repair chronically-failing CI/CD pipeline
+
 ## [2.4.0] - 2026-07-20
 
 ### Added
@@ -549,7 +563,7 @@ For upgrade instructions between major versions, add or consult a dedicated upgr
 
 ---
 
-[Unreleased]: https://github.com/niloc95/xscheduler_ci4/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/niloc95/xscheduler_ci4/compare/v2.4.1...HEAD
 [1.0.4]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.4
 [1.0.3]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.3
 [1.0.2]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.2
@@ -584,3 +598,4 @@ For upgrade instructions between major versions, add or consult a dedicated upgr
 [2.2.3]: https://github.com/niloc95/xscheduler_ci4/compare/v2.2.2...v2.2.3
 [2.2.4]: https://github.com/niloc95/xscheduler_ci4/compare/v2.2.3...v2.2.4
 [2.4.0]: https://github.com/niloc95/xscheduler_ci4/compare/v2.3.0...v2.4.0
+[2.4.1]: https://github.com/niloc95/xscheduler_ci4/compare/v2.4.0...v2.4.1
