@@ -19,36 +19,36 @@ jobs:
   validate-docs:
     name: Validate Documentation
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          
+
       - name: Install markdown tools
         run: |
           npm install -g markdownlint-cli
           npm install -g markdown-link-check
-          
+
       - name: Lint Markdown files
         run: |
           echo "## Markdown Linting Results" > docs-report.md
           echo "" >> docs-report.md
-          
+
           # Find all markdown files
           MARKDOWN_FILES=$(find . -name "*.md" -not -path "./node_modules/*" -not -path "./vendor/*")
-          
+
           if [ -n "$MARKDOWN_FILES" ]; then
             echo "Found markdown files:" >> docs-report.md
             echo "\`\`\`" >> docs-report.md
             echo "$MARKDOWN_FILES" >> docs-report.md
             echo "\`\`\`" >> docs-report.md
             echo "" >> docs-report.md
-            
+
             # Run markdownlint
             if markdownlint $MARKDOWN_FILES; then
               echo "✅ All markdown files pass linting" >> docs-report.md
@@ -58,13 +58,13 @@ jobs:
           else
             echo "No markdown files found" >> docs-report.md
           fi
-          
+
       - name: Check documentation links
         run: |
           echo "" >> docs-report.md
           echo "## Link Validation" >> docs-report.md
           echo "" >> docs-report.md
-          
+
           # Check links in documentation
           DOCS_FILES=$(find docs/ -name "*.md" 2>/dev/null || echo "")
           if [ -n "$DOCS_FILES" ]; then
@@ -80,7 +80,7 @@ jobs:
           else
             echo "No documentation files found in docs/ directory" >> docs-report.md
           fi
-          
+
       - name: Validate engineering skills
         run: |
           echo "" >> docs-report.md
@@ -111,13 +111,13 @@ jobs:
           else
             echo "⚠️ Skills README missing at $SKILLS_DIR/README.md" >> docs-report.md
           fi
-          
+
       - name: Check for documentation TODOs
         run: |
           echo "" >> docs-report.md
           echo "## Documentation TODOs" >> docs-report.md
           echo "" >> docs-report.md
-          
+
           # Find TODO items in documentation
           TODOS=$(grep -r -i "todo\|fixme\|xxx" docs/ --include="*.md" || echo "")
           if [ -n "$TODOS" ]; then
@@ -128,20 +128,20 @@ jobs:
           else
             echo "✅ No TODO items found in documentation" >> docs-report.md
           fi
-          
+
       - name: Generate documentation summary
         run: |
           echo "" >> docs-report.md
           echo "## Documentation Summary" >> docs-report.md
           echo "" >> docs-report.md
-          
+
           # Count documentation files
           MD_COUNT=$(find . -name "*.md" -not -path "./node_modules/*" -not -path "./vendor/*" | wc -l)
           DOCS_COUNT=$(find docs/ -name "*.md" 2>/dev/null | wc -l || echo "0")
-          
+
           echo "📄 Total markdown files: $MD_COUNT" >> docs-report.md
           echo "📁 Files in docs/: $DOCS_COUNT" >> docs-report.md
-          
+
           # List documentation structure
           if [ -d "docs" ]; then
             echo "" >> docs-report.md
@@ -150,14 +150,14 @@ jobs:
             tree docs/ -I "node_modules|vendor" || find docs/ -type f -name "*.md" | sort >> docs-report.md
             echo "\`\`\`" >> docs-report.md
           fi
-          
+
       - name: Upload documentation report
         uses: actions/upload-artifact@v4
         with:
           name: documentation-report-${{ github.sha }}
           path: docs-report.md
           retention-days: 30
-          
+
       - name: Comment on PR (if applicable)
         if: github.event_name == 'pull_request' && failure()
         uses: actions/github-script@v7
@@ -173,75 +173,3 @@ jobs:
                 body: `## 📚 Documentation Validation Results\n\n${report}`
               });
             }
-
-  generate-docs-index:
-    name: Generate Documentation Index
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-        
-      - name: Generate documentation index
-        run: |
-          echo "# WebScheduler Documentation Index" > docs/README.md
-          echo "" >> docs/README.md
-          echo "Generated on: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> docs/README.md
-          echo "" >> docs/README.md
-          
-          echo "## 📋 Documentation Structure" >> docs/README.md
-          echo "" >> docs/README.md
-          
-          # Generate table of contents
-          find docs/ -name "*.md" -not -name "README.md" | sort | while read file; do
-            # Get relative path
-            rel_path=${file#docs/}
-            # Get first line as title (remove # if present)
-            title=$(head -n 1 "$file" | sed 's/^# *//' | sed 's/^## *//')
-            if [ -z "$title" ]; then
-              title=$(basename "$file" .md)
-            fi
-            echo "- [$title]($rel_path)" >> docs/README.md
-          done
-          
-          echo "" >> docs/README.md
-          echo "## 🏗️ Architecture Documentation" >> docs/README.md
-          echo "" >> docs/README.md
-          echo "The main architectural documentation is maintained in:" >> docs/README.md
-          echo "- [Master Context Document](architecture/mastercontext.md) - Complete project overview and development history" >> docs/README.md
-          echo "" >> docs/README.md
-          echo "## 🚀 Deployment Documentation" >> docs/README.md
-          echo "" >> docs/README.md
-          echo "Deployment guides and troubleshooting:" >> docs/README.md
-          if [ -d "docs/deployment" ]; then
-            find docs/deployment -name "*.md" | sort | while read file; do
-              rel_path=${file#docs/}
-              title=$(basename "$file" .md | tr '-' ' ' | tr '_' ' ')
-              echo "- [$title]($rel_path)" >> docs/README.md
-            done
-          fi
-          
-          VERSION=$(grep '"version"' package.json | head -1 | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
-          echo "" >> docs/README.md
-          echo "## 📈 Project Status" >> docs/README.md
-          echo "" >> docs/README.md
-          echo "- **Current Version**: ${VERSION:-unknown}" >> docs/README.md
-          echo "- **Build Status**: ![CI/CD](https://github.com/niloc95/xscheduler_ci4/actions/workflows/ci-cd.yml/badge.svg)" >> docs/README.md
-          echo "- **Last Updated**: $(date -u '+%Y-%m-%d')" >> docs/README.md
-
-      - name: Commit documentation index
-        run: |
-          if git diff --quiet -- docs/README.md; then
-            echo "docs/README.md is already up to date — nothing to commit."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/README.md
-          git commit -m "docs: update documentation index [skip ci]"
-          git push origin HEAD:main
