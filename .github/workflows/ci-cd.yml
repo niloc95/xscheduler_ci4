@@ -139,6 +139,10 @@ jobs:
       - name: Create test database config
         run: |
           cp .env.example .env
+          # Guarantee a newline boundary so appended keys never concatenate onto
+          # the last line of .env.example (an unquoted "value ...key = val" line
+          # makes CI4's DotEnv throw "values containing spaces must be quoted").
+          printf '\n' >> .env
           echo "CI_ENVIRONMENT = testing" >> .env
           echo "database.tests.hostname = 127.0.0.1" >> .env
           echo "database.tests.database = webschedulr_test" >> .env
@@ -242,6 +246,8 @@ jobs:
       - name: Setup test environment
         run: |
           cp .env.example .env
+          # Guarantee a newline boundary before appending (see phpunit job note).
+          printf '\n' >> .env
           echo "CI_ENVIRONMENT = testing" >> .env
           echo "app.baseURL = 'http://localhost:8080/'" >> .env
           
