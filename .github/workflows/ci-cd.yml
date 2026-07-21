@@ -170,7 +170,9 @@ jobs:
 
       - name: Fresh migrate test schema
         run: |
-          php spark migrate:refresh -n App --all
+          # -f: skip the interactive "Are you sure?" prompt — CI has no TTY, so
+          # CLI::prompt() would read false from stdin and throw a TypeError.
+          php spark migrate:refresh -n App --all -f
 
       - name: Seed baseline availability integration data
         run: |
