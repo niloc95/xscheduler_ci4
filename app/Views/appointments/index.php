@@ -73,7 +73,7 @@
            Tier 1 = Today + view switcher + date navigation (left)  ·  Filters (right)
            Tier 2 = status filter chips (left)  ·  provider legend (right)
          Both tiers share the same left edge for a clean, aligned toolbar. -->
-    <div class="appointments-toolbar flex flex-col gap-3"
+    <div class="appointments-toolbar flex flex-col gap-2 md:gap-3"
          data-status-filter-container data-active-status="<?= esc($activeStatusFilter ?? '') ?>">
 
         <!-- Tier 1: navigation + view controls (left) · Filters (right) -->
@@ -90,11 +90,8 @@
                 <div class="appointments-toolbar__view-switcher inline-flex items-center rounded-full border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 p-0.5 shadow-sm"
                      role="group" aria-label="Calendar view">
                     <button type="button" data-calendar-action="agenda"
-                            class="appointments-toolbar__view-btn view-toggle-btn inline-flex items-center gap-1 px-3.5 py-2 rounded-full text-sm font-semibold whitespace-nowrap text-gray-600 dark:text-gray-400 transition-all duration-150"
-                            data-view="agenda" title="Agenda list">
-                        <span class="material-symbols-outlined text-base leading-none">view_agenda</span>
-                        <span>Agenda</span>
-                    </button>
+                            class="appointments-toolbar__view-btn view-toggle-btn px-3.5 py-2 rounded-full text-sm font-semibold whitespace-nowrap text-gray-600 dark:text-gray-400 transition-all duration-150"
+                            data-view="agenda" title="Agenda list">Agenda</button>
                     <button type="button" data-calendar-action="day"
                             class="appointments-toolbar__view-btn view-toggle-btn px-3.5 py-2 rounded-full text-sm font-semibold whitespace-nowrap text-gray-600 dark:text-gray-400 transition-all duration-150"
                             data-view="day">Day</button>
@@ -162,7 +159,7 @@
         <div class="appointments-toolbar__secondary flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-3">
 
             <div id="scheduler-stats-bar"
-                 class="appointments-toolbar__status-rail flex flex-row flex-wrap items-center gap-1.5 md:gap-1"
+                 class="appointments-toolbar__status-rail flex flex-row flex-nowrap overflow-x-auto items-center gap-1.5 md:flex-wrap md:gap-1"
                  data-initial-pending="<?= $pendingCount ?>"
                  data-initial-confirmed="<?= $confirmedCount ?>"
                  data-initial-completed="<?= $completedCount ?>"

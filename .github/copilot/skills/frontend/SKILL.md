@@ -235,20 +235,23 @@ All table action columns use icon-only buttons inside `xs-actions-container`. Th
 
 Flash messages are rendered automatically by `layouts/app` via `$this->include('components/ui/flash-messages')`. Views must **not** include manual flash message HTML blocks (`session()->getFlashdata('message')` divs). Deleting those blocks from migrated views is required.
 
-### 7.5 Appointments Toolbar — Mobile Two-Rail Layout
+### 7.5 Appointments Toolbar — Mobile Two-Tier Layout
 
-`app/Views/appointments/index.php` uses a two-rail horizontal layout inside `header_controls`:
+`app/Views/appointments/index.php` uses a two-tier stacked layout inside `header_controls`:
 
-- **Outer wrapper:** `appointments-toolbar flex flex-row items-start gap-3 md:items-center md:gap-3`
-- **Rail A** (`appointments-toolbar__primary`): `flex flex-col gap-1.5 min-w-0 md:flex-row md:items-center md:gap-2`
-  - Sub-row 1 (mobile): Today button + view-mode switcher
-  - Sub-row 2 (mobile): Date navigation cluster (prev / label / next)
-  - Collapses to single flex row on `md+`
-- **Rail B** (`appointments-toolbar__secondary`): `flex items-start gap-2 min-w-0 md:items-center`
-  - `#scheduler-stats-bar`: `flex flex-col gap-1 md:flex-row md:flex-nowrap md:items-center md:gap-1` — chips stack vertically on mobile, row on desktop
-- Mobile filter button is **removed** from Rail B; filter toggle is desktop-only (`hidden md:inline-flex`)
+- **Outer wrapper:** `appointments-toolbar flex flex-col gap-2 md:gap-3` (tighter tier gap on phones).
+- **Tier 1** (`flex flex-col gap-1.5 md:flex-row md:justify-between`):
+  - **Nav cluster** (`appointments-toolbar__primary`): Row 1 = Today button + view switcher; Row 2 = date-navigation cluster (prev / label / next / datepicker). Collapses to one row at `md+`.
+  - **Right controls:** Overview panel toggle (`#scheduler-panel-toggle`, shown below 1300px) + Filters toggle (`#advanced-filter-toggle`, desktop-only `hidden md:inline-flex`).
+- **Tier 2** (`appointments-toolbar__secondary`): status filter chips (`#scheduler-stats-bar`) + provider legend (`#provider-legend`, `hidden md:flex`).
 
-**Do not revert to a single `overflow-x-auto` row** — that pattern caused date cluster overflow on narrow screens.
+**View switcher pills are text-only and uniform** — `Agenda | Day | Week | Month`, each `px-3.5 py-2 rounded-full ... view-toggle-btn`. Do not give any one pill an icon (it unbalances the group).
+
+**Status chips = one horizontally-scrollable row on mobile:** `#scheduler-stats-bar` is `flex-nowrap overflow-x-auto ... md:flex-wrap`; the `.appointments-toolbar__status-rail` SCSS hides the scrollbar and sets children `flex-shrink: 0`. Do **not** wrap or vertically stack them on mobile — that adds header height. (The "no single `overflow-x-auto` row" caveat applies only to the **Tier-1 date-cluster** rail, which caused overflow — not to this status rail.)
+
+**Mobile control height:** ~40px (`min-height: 2.5rem` in the `max-width: 767px` block) — a deliberate density trade-off to reclaim header space; the header height is `position: fixed` + ResizeObserver-measured (`app-layout-init.js` → `--xs-header-height`), so trimming the toolbar directly enlarges the list area.
+
+**Agenda date is toolbar-sourced only.** The agenda list (`scheduler-agenda-view.js`) renders **no** sticky date heading; the always-visible toolbar date label is the single source, made agenda-aware by the `agenda` case in `date-nav-label.js` (`"Today · Mon, 20 Jul"` / short day). Do not reintroduce a duplicate heading inside the list.
 
 ## 8. Shared Fetch Contract
 

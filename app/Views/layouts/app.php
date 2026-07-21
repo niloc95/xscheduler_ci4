@@ -269,7 +269,7 @@
                     <!-- Page-Specific Header Controls (injected by child views) -->
                     <?php $headerControlsContent = trim($this->renderSection('header_controls') ?? ''); ?>
                     <?php if ($headerControlsContent !== ''): ?>
-                    <div class="xs-header-controls mt-3 pt-3 border-t border-gray-200 dark:border-gray-700" id="header-controls-slot">
+                    <div class="xs-header-controls mt-2 pt-2 sm:mt-3 sm:pt-3 border-t border-gray-200 dark:border-gray-700" id="header-controls-slot">
                         <?= $headerControlsContent ?>
                     </div>
                     <?php endif; ?>

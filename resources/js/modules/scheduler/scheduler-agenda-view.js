@@ -46,13 +46,11 @@ export class AgendaView {
             .filter((entry) => entry.start && entry.start.isValid)
             .sort((a, b) => a.start.toMillis() - b.start.toMillis());
 
-        const heading = (data.currentDate || DateTime.now().setZone(timezone))
-            .toLocaleString({ weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-
+        // No date heading here — the sticky toolbar is the single date source
+        // (see date-nav-label.js 'agenda' case), which keeps the list area tall.
         if (appointments.length === 0) {
             container.innerHTML = `
                 <div class="agenda-view">
-                    <div class="agenda-view__heading">${escapeHtml(heading)}</div>
                     <div class="agenda-view__empty">
                         <span class="material-symbols-outlined text-4xl text-gray-400 dark:text-gray-500 mb-3 block">event_available</span>
                         <p class="text-sm text-gray-500 dark:text-gray-400">No appointments scheduled</p>
@@ -69,7 +67,6 @@ export class AgendaView {
 
         container.innerHTML = `
             <div class="agenda-view">
-                <div class="agenda-view__heading">${escapeHtml(heading)}</div>
                 <div class="agenda-view__list">${cards}</div>
             </div>
         `;

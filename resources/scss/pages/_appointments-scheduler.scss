@@ -108,18 +108,25 @@
 }
 
 @media (max-width: 767px) {
-    // Touch targets: >=44px per Apple/Material accessibility guidance.
+    // Denser touch targets on phones (~40px) to reclaim header height while
+    // staying comfortably tappable.
     .appointments-toolbar__today-btn,
     .appointments-toolbar__view-btn,
     .appointments-toolbar__filter,
     .scheduler-panel-toggle,
     .appointments-toolbar__date-cluster {
-        min-height: 2.75rem;
+        min-height: 2.5rem;
     }
 
     .appointments-toolbar__date-display {
         min-width: 5.75rem;
         font-size: 0.8125rem;
+    }
+
+    // Status chips ride one horizontally-scrollable row (see markup) — keep each
+    // chip its natural size instead of compressing to fit.
+    .appointments-toolbar__status-rail > * {
+        flex-shrink: 0;
     }
 }
 
@@ -725,24 +732,6 @@ $scheduler-panel-bp: 1300px;
    ======================================== */
 .agenda-view {
     padding: 0.75rem;
-}
-
-.agenda-view__heading {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    padding: 0.5rem 0.25rem 0.75rem;
-    font-size: 0.8125rem;
-    font-weight: 700;
-    color: var(--color-gray-500);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    background: var(--color-surface-0);
-}
-
-.dark .agenda-view__heading {
-    color: var(--color-gray-400);
-    background: var(--color-gray-900);
 }
 
 .agenda-view__list {
