@@ -144,6 +144,9 @@ jobs:
           # makes CI4's DotEnv throw "values containing spaces must be quoted").
           printf '\n' >> .env
           echo "CI_ENVIRONMENT = testing" >> .env
+          # .env.example ships app.baseURL='' — CI4 bootstrap (spark migrate) fatals
+          # with ConfigException: baseURL "/" is not a valid URL until it's set.
+          echo "app.baseURL = 'http://localhost:8080/'" >> .env
           echo "database.tests.hostname = 127.0.0.1" >> .env
           echo "database.tests.database = webschedulr_test" >> .env
           echo "database.tests.username = test_user" >> .env
