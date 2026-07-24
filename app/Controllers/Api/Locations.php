@@ -81,7 +81,7 @@ class Locations extends BaseApiController
 
     private function auditLocation(string $action, int $locationId, array $fields = []): void
     {
-        $userId = session()->get('user_id');
+        $userId = current_user_id();
         if (!is_numeric($userId) || (int) $userId <= 0) {
             return;
         }

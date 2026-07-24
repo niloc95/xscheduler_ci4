@@ -3,6 +3,7 @@
 namespace App\Services\Settings;
 
 use App\Models\SettingModel;
+use App\Services\TimezoneService;
 use CodeIgniter\HTTP\Files\UploadedFile;
 
 class GeneralSettingsService
@@ -358,10 +359,46 @@ class GeneralSettingsService
                 continue;
             }
 
-            if (array_key_exists($postKey, $post)) {
-                $upsert($settingKey, $post[$postKey]);
+            if (!array_key_exists($postKey, $post)) {
+                continue;
             }
+
+            // Localization keys drive currency rendering and every datetime
+            // conversion app-wide. Reject unknown values rather than persisting
+            // a code with no symbol or a timezone DateTimeZone can't construct.
+            if ($settingKey === 'localization.currency') {
+                $candidate = strtoupper(trim((string) $post[$postKey]));
+                if (!$this->isSupportedCurrency($candidate)) {
+                    log_message('warning', '[GeneralSettingsService] Rejected unsupported currency: ' . $candidate);
+                    continue;
+                }
+                $upsert($settingKey, $candidate);
+                continue;
+            }
+
+            if ($settingKey === 'localization.timezone') {
+                $candidate = trim((string) $post[$postKey]);
+                if (!TimezoneService::isValidTimezone($candidate)) {
+                    log_message('warning', '[GeneralSettingsService] Rejected invalid timezone: ' . $candidate);
+                    continue;
+                }
+                $upsert($settingKey, $candidate);
+                continue;
+            }
+
+            $upsert($settingKey, $post[$postKey]);
         }
+    }
+
+    /**
+     * A currency is supported only if currency_helper has a symbol mapping for it —
+     * otherwise prices would render as a bare code ("XYZ 150.00").
+     */
+    private function isSupportedCurrency(string $code): bool
+    {
+        helper('currency');
+
+        return is_supported_currency($code);
     }
 
     private function handleCompanyLogoUpload(?UploadedFile $file, ?int $userId): ?array

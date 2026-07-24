@@ -82,16 +82,17 @@ if (!function_exists('setting')) {
      */
     function setting(string $key, $default = null)
     {
-        static $cache = [];
-        if (array_key_exists($key, $cache)) {
-            return $cache[$key];
-        }
+        // No local cache: SettingModel::getByKeys() already request-caches, including
+        // negative hits, so a second layer here only duplicated it — and being a
+        // function-static, it froze values for the whole process and could not be
+        // reset by tests.
+        //
+        // Keys are lowercase.dotted and matched EXACTLY. A mis-cased key silently
+        // returns $default forever rather than erroring. See architecture skill §8A.
         try {
             $model = new SettingModel();
-            $vals = $model->getByKeys([$key]);
-            $val = $vals[$key] ?? $default;
-            $cache[$key] = $val;
-            return $val;
+
+            return $model->getByKeys([$key])[$key] ?? $default;
         } catch (\Throwable $e) {
             return $default;
         }

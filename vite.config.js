@@ -6,6 +6,17 @@ import autoprefixer from 'autoprefixer';
 export default defineConfig({
   base: '/',
   publicDir: false,
+  // Emit runtime asset URLs (e.g. `?url` imports, dynamic imports, CSS url())
+  // as relative paths. The app serves the build output under /build/, not /,
+  // so an absolute `/assets/...` URL 404s; a relative URL resolves correctly
+  // from the importing chunk's location (/build/assets/) and stays correct
+  // under sub-path deployments. Manifest-based loads (vite_helper) are
+  // unaffected — they build their own /build/ paths.
+  experimental: {
+    renderBuiltUrl() {
+      return { relative: true };
+    },
+  },
   build: {
     outDir: 'public/build',
     emptyOutDir: true,
@@ -24,6 +35,8 @@ export default defineConfig({
         'unified-sidebar': path.resolve(process.cwd(), 'resources/js/unified-sidebar.js'),
         charts: path.resolve(process.cwd(), 'resources/js/charts.js'),
         'public-booking': path.resolve(process.cwd(), 'resources/js/public-booking.js'),
+        // Standalone developer API docs page (Redoc). Self-hosted, no CDN.
+        developers: path.resolve(process.cwd(), 'resources/js/developers.js'),
       },
       output: {
         // Hash entry files too so production clients/CDNs do not serve stale JS.

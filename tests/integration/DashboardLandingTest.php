@@ -2,6 +2,7 @@
 
 namespace App\Tests\Integration;
 
+use App\Models\SettingModel;
 use App\Services\AuthorizationService;
 use App\Services\DashboardApiService;
 use App\Services\DashboardPageService;
@@ -158,6 +159,11 @@ class DashboardLandingTest extends CIUnitTestCase
                 'updated_at' => $now,
             ]);
         }
+
+        // These rows were written via the query builder, bypassing
+        // SettingModel::upsert()'s cache invalidation. The cache is process-static,
+        // so without this an earlier test in the same run pins the stale value.
+        SettingModel::clearRequestCache();
     }
 
     private function authSession(int $userId, string $name, string $email, string $role): array
@@ -190,6 +196,38 @@ class DashboardLandingTest extends CIUnitTestCase
         $this->assertArrayHasKey('schedule', $viewData);
         $this->assertArrayHasKey('recent_activities', $viewData);
         $this->assertSame(2, (int) ($viewData['metrics']['total'] ?? 0));
+    }
+
+    /**
+     * The seeded currency is USD. `format_currency()` previously read the setting
+     * under a mis-cased key, so it silently fell back to ZAR and the dashboard
+     * revenue tile rendered "R…" no matter what the business had configured.
+     */
+    public function testDashboardRevenueTileUsesTheConfiguredCurrency(): void
+    {
+        session()->set($this->authSession($this->adminId, 'Admin User', 'admin@test.com', 'admin'));
+
+        // revenue_formatted is produced by the metrics endpoint, which is what the
+        // landing page's live poll re-renders the Revenue tile from.
+        $response = (new DashboardPageService())->getMetricsEndpointResponse();
+
+        $this->assertSame(200, $response['statusCode']);
+
+        $formatted = (string) ($response['payload']['data']['revenue_formatted'] ?? '');
+
+        $this->assertNotSame('', $formatted, 'Dashboard metrics must expose a pre-formatted revenue value.');
+        $this->assertStringStartsWith('$', $formatted);
+        $this->assertStringNotContainsString('R', $formatted);
+    }
+
+    public function testCurrencyHelpersResolveTheConfiguredCurrencyEndToEnd(): void
+    {
+        helper('currency');
+
+        // Reads through SettingModel against the real seeded settings row.
+        $this->assertSame('USD', get_app_currency());
+        $this->assertSame('$', get_app_currency_symbol());
+        $this->assertSame('$1,500.00', format_currency(1500));
     }
 
     public function testDashboardPageServiceMetricsResponseForProvider(): void

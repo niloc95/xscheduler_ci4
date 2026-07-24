@@ -23,6 +23,12 @@ final class SettingsApiV1PublicTest extends CIUnitTestCase
 
         $this->ensureSetupFlag();
         $this->configureTestingDatabaseEnvironment();
+
+        // SettingModel's request cache is process-static: a prior test class
+        // (e.g. ProvidersServicesApiV1Test) can leave localization values cached
+        // so this test reads a stale timezone instead of the row it just wrote.
+        // $refresh resets the DB but not this static cache — clear it explicitly.
+        \App\Models\SettingModel::clearRequestCache();
     }
 
     public function testLocalizationEndpointReturnsCompatibilityKeysWithoutAuthentication(): void

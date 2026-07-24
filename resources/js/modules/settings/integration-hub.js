@@ -156,11 +156,12 @@ function wireStripe() {
         const secretKey      = document.getElementById('stripe-secret-key')?.value ?? '';
         const publishableKey = document.getElementById('stripe-publishable-key')?.value.trim() ?? '';
         const webhookSecret  = document.getElementById('stripe-webhook-secret')?.value ?? '';
-        const currency       = document.getElementById('stripe-currency')?.value ?? 'usd';
 
         setButtonLoading(saveBtn, true);
         try {
-            const result = await callApi('save', 'stripe', { secret_key: secretKey, publishable_key: publishableKey, webhook_secret: webhookSecret, currency });
+            // Currency is not sent: charges use the business currency
+            // (localization.currency), resolved server-side by PaymentService.
+            const result = await callApi('save', 'stripe', { secret_key: secretKey, publishable_key: publishableKey, webhook_secret: webhookSecret });
             if (result.ok) {
                 showToast('success', 'Stripe', result.message);
                 closeModal('stripe-modal');

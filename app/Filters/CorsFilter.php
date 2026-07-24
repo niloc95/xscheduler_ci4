@@ -29,13 +29,16 @@
  * 
  * CONFIGURATION:
  * -----------------------------------------------------------------------------
- * Configured in app/Config/Api.php:
+ * Configured in app/Config/Api.php. `allowedOrigins` is an explicit allow-list
+ * (empty = same-origin only), extended by the `api.allowedOrigins` env var.
+ * Only a listed origin is echoed back; wildcards are not supported because
+ * /api/* is CSRF-exempt.
  *     public $cors = [
- *         'allowedOrigins' => ['*'],
- *         'allowedMethods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
- *         'allowedHeaders' => ['Content-Type', 'Authorization'],
+ *         'allowedOrigins' => [],
+ *         'allowedMethods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+ *         'allowedHeaders' => ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
  *         'maxAge' => 600,
- *         'allowCredentials' => true,
+ *         'allowCredentials' => false,
  *     ];
  * 
  * PREFLIGHT:
@@ -65,20 +68,37 @@ class CorsFilter implements FilterInterface
         $config = config(ApiConfig::class);
         $response = service('response');
 
-        $origin = $request->getHeaderLine('Origin');
-        $allowedOrigins = $config->cors['allowedOrigins'] ?? ['*'];
-        $allowOrigin = in_array('*', $allowedOrigins, true) ? '*' : ($origin ?: '');
+        $origin = trim((string) $request->getHeaderLine('Origin'));
+        $allowedOrigins = $config->allowedOrigins();
 
-        $response->setHeader('Access-Control-Allow-Origin', $allowOrigin);
+        // Vary regardless of the outcome so caches never reuse an allow header
+        // across origins.
         $response->setHeader('Vary', 'Origin');
-        $response->setHeader('Access-Control-Allow-Methods', implode(',', $config->cors['allowedMethods'] ?? []));
-        $response->setHeader('Access-Control-Allow-Headers', implode(',', $config->cors['allowedHeaders'] ?? []));
-        $response->setHeader('Access-Control-Max-Age', (string)($config->cors['maxAge'] ?? 600));
-        if (!empty($config->cors['allowCredentials'])) {
-            $response->setHeader('Access-Control-Allow-Credentials', 'true');
+
+        // Echo back only an explicitly allow-listed origin. An unknown origin
+        // gets no Access-Control-Allow-Origin header at all, which the browser
+        // treats as a rejection. There is deliberately no wildcard branch:
+        // /api/* is CSRF-exempt, so a permissive origin plus cookie auth would
+        // be a live CSRF hole.
+        $originAllowed = $origin !== '' && in_array($origin, $allowedOrigins, true);
+
+        if ($originAllowed) {
+            $response->setHeader('Access-Control-Allow-Origin', $origin);
+            $response->setHeader('Access-Control-Allow-Methods', implode(',', $config->cors['allowedMethods'] ?? []));
+            $response->setHeader('Access-Control-Allow-Headers', implode(',', $config->cors['allowedHeaders'] ?? []));
+            $response->setHeader('Access-Control-Max-Age', (string)($config->cors['maxAge'] ?? 600));
+
+            if (!empty($config->cors['exposedHeaders'])) {
+                $response->setHeader('Access-Control-Expose-Headers', implode(',', $config->cors['exposedHeaders']));
+            }
+
+            if (!empty($config->cors['allowCredentials'])) {
+                $response->setHeader('Access-Control-Allow-Credentials', 'true');
+            }
         }
 
-        // Short-circuit preflight
+        // Short-circuit preflight. A preflight from a disallowed origin still
+        // returns 204, just without the allow headers that would permit it.
         if (strtoupper($request->getMethod()) === 'OPTIONS') {
             return $response->setStatusCode(204);
         }

@@ -30,13 +30,15 @@ final class DashboardServiceTest extends CIUnitTestCase
                 'email' => 'dana@example.com',
             ]);
 
+        // There is no date-format setting. getContext() never emits a 'date_format'
+        // key in production, so DashboardService must not ask for one — it formats
+        // "today" itself, in the business timezone.
         $localization = $this->createMock(LocalizationSettingsService::class);
-        $localization->expects($this->once())
-            ->method('getContext')
-            ->willReturn(['date_format' => 'd/m/Y']);
+        $localization->expects($this->never())
+            ->method('getContext');
         $localization->expects($this->once())
             ->method('getTimezone')
-            ->willReturn('Africa/Johannesburg');
+            ->willReturn('Pacific/Auckland');
 
         $service = new DashboardService(
             $this->createMock(AppointmentModel::class),
@@ -55,8 +57,12 @@ final class DashboardServiceTest extends CIUnitTestCase
         $this->assertSame('Dana Admin', $context['user_name']);
         $this->assertSame('dana@example.com', $context['user_email']);
         $this->assertSame('admin', $context['user_role']);
-        $this->assertSame('Africa/Johannesburg', $context['timezone']);
-        $this->assertSame(date('d/m/Y'), $context['current_date']);
+        $this->assertSame('Pacific/Auckland', $context['timezone']);
+
+        // "Today" is evaluated in the business timezone, not the server's. Auckland
+        // is UTC+12/13, so near midnight this differs from date('Y-m-d') by a day.
+        $expected = (new \DateTimeImmutable('now', new \DateTimeZone('Pacific/Auckland')))->format('Y-m-d');
+        $this->assertSame($expected, $context['current_date']);
     }
 
     public function testGetAlertsReturnsPendingConfirmationAlert(): void

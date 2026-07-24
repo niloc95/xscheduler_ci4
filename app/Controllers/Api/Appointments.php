@@ -117,9 +117,11 @@ class Appointments extends BaseApiController
             $page   = max(1, (int) ($this->request->getGet('page') ?? 1));
             $length = min(1000, max(1, (int) ($this->request->getGet('length') ?? 50)));
 
-            // Session-based role scoping (fixes RISK-06)
+            // Identity-based role scoping (fixes RISK-06). Resolves the session
+            // user or the API token's bound user, so a provider-bound token is
+            // scoped exactly as a logged-in provider is.
             $userRole      = current_user_role();
-            $scopeToUserId = session()->get('user_id');
+            $scopeToUserId = current_user_id();
 
             $queryService = new AppointmentQueryService();
             $formatter    = new AppointmentFormatterService();

@@ -144,6 +144,10 @@ class Filters extends BaseFilters
             'maintenance' => ['except' => ['login', 'auth/*']],
             'request_context',
             'timezone' => ['except' => ['setup', 'setup/*']],
+            // CORS must run on a URI pattern rather than a route group: routes
+            // are registered per-verb, so a cross-origin OPTIONS preflight
+            // matches no route and would 404 before a group filter ever ran.
+            'api_cors' => ['before' => ['api/*']],
             // 'honeypot',
             'csrf' => ['except' => ['api/*', 'setup/*', 'public/payments/*']],
             // 'invalidchars',

@@ -58,6 +58,12 @@ $routes->post('setup/testConnection', 'Setup::testConnection');
 $routes->get('login', 'Auth::login', ['filter' => 'setup']);
 $routes->post('login', 'Auth::attemptLogin', ['filter' => 'setup']);
 
+// Developer API portal (public — exposes the API contract only, never data).
+// Registered outside the setup/auth groups so it renders pre-login.
+$routes->get('developers', 'DeveloperDocs::index');
+$routes->get('developers/getting-started', 'DeveloperDocs::gettingStarted');
+$routes->get('developers/openapi.yaml', 'DeveloperDocs::spec');
+
 // Authentication Routes (require setup to be completed)
 $routes->group('auth', function($routes) {
     $routes->get('login', 'Auth::login', ['filter' => 'setup']);
@@ -256,55 +262,141 @@ $routes->group('my-appointments', ['filter' => 'setup'], function($routes) {
     $routes->get('(:segment)/autofill', 'PublicSite\CustomerPortalController::autofill/$1', ['filter' => 'public_rate_limit']);
 });
 
+// CORS preflight catch-all. Routes are registered per-verb, so a cross-origin
+// OPTIONS request matches nothing and CI4 throws PageNotFoundException during
+// routing — before any filter runs. This route gives preflight something to
+// match; the api_cors global filter then short-circuits it with 204 and the
+// appropriate allow headers (or none, for a disallowed origin).
+$routes->options('api/(:any)', static fn() => service('response')->setStatusCode(204));
+
 // Scheduler API routes
-$routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
-    // Dashboard API endpoint
-    $routes->get('dashboard/appointment-stats', 'Api\\Dashboard::appointmentStats', ['filter' => 'auth']);
-    $routes->get('dashboard/provider-slots', 'Api\\Dashboard::providerSlots', ['filter' => 'auth']);
+/**
+ * Authenticated API surface — the documented, externally callable endpoints.
+ *
+ * Registered twice: once unversioned (`/api/...`, the paths the SPA already
+ * calls, kept as undocumented aliases) and once under `/api/v1/...`, which is
+ * the canonical path for external clients. Defining them as tuples keeps the
+ * two registrations from drifting.
+ *
+ * All of these use the `api_auth` filter, which accepts EITHER a same-origin
+ * session OR a Bearer token from xs_api_keys. Order matters: specific paths are
+ * listed before the generic resource route so they are not shadowed.
+ *
+ * @var array<int, array{0:string,1:string,2:string,3?:string}> [verb, path, handler, filter?]
+ */
+$xsApiAuthenticatedRoutes = [
+    // Dashboard
+    ['get',    'dashboard/appointment-stats', 'Api\\Dashboard::appointmentStats'],
+    ['get',    'dashboard/provider-slots',    'Api\\Dashboard::providerSlots'],
 
-    // Authentication API endpoints (requires auth)
+    // User Management (admin/provider only)
+    ['get',    'users',       'UserManagement::apiList',   'api_auth:admin,provider'],
+    ['get',    'user-counts', 'UserManagement::apiCounts', 'api_auth:admin,provider'],
+
+    // Customer Appointments (history, stats, autofill)
+    ['get',    'customers/(:num)/appointments/upcoming', 'Api\\CustomerAppointments::upcoming/$1'],
+    ['get',    'customers/(:num)/appointments/history',  'Api\\CustomerAppointments::history/$1'],
+    ['get',    'customers/(:num)/appointments/stats',    'Api\\CustomerAppointments::stats/$1'],
+    ['get',    'customers/(:num)/appointments',          'Api\\CustomerAppointments::index/$1'],
+    ['get',    'customers/(:num)/autofill',              'Api\\CustomerAppointments::autofill/$1'],
+    ['get',    'appointments/search',                    'Api\\CustomerAppointments::search'],
+    ['get',    'appointments/filters',                   'Api\\CustomerAppointments::filterOptions'],
+
+    // Appointments — specific endpoints BEFORE the resource routes
+    ['post',   'appointments',                        'Api\\Appointments::create'],
+    ['get',    'appointments/summary',                'Api\\Appointments::summary'],
+    ['get',    'appointments/counts',                 'Api\\Appointments::counts'],
+    ['post',   'appointments/check-availability',     'Api\\Appointments::checkAvailability'],
+    ['get',    'appointments/(:num)',                 'Api\\Appointments::show/$1'],
+    ['patch',  'appointments/(:num)',                 'Api\\Appointments::update/$1'],
+    ['delete', 'appointments/(:num)',                 'Api\\Appointments::delete/$1'],
+    ['patch',  'appointments/(:num)/status',          'Api\\Appointments::updateStatus/$1'],
+    ['patch',  'appointments/(:num)/notes',           'Api\\Appointments::updateNotes/$1'],
+    ['patch',  'appointments/(:num)/payment-status',  'Api\\Appointments::updatePaymentStatus/$1'],
+    ['post',   'appointments/(:num)/notify',          'Api\\Appointments::notify/$1'],
+    ['get',    'appointments',                        'Api\\Appointments::index'],
+
+    // Calendar — pre-computed server-side render models (Phase 3+ rebuild)
+    ['get',    'calendar/day',   'Api\\CalendarController::day'],
+    ['get',    'calendar/week',  'Api\\CalendarController::week'],
+    ['get',    'calendar/month', 'Api\\CalendarController::month'],
+
+    // Locations — writes only; the reads below are public
+    ['post',   'locations',                     'Api\\Locations::create'],
+    ['put',    'locations/(:num)',              'Api\\Locations::update/$1'],
+    ['patch',  'locations/(:num)',              'Api\\Locations::update/$1'],
+    ['delete', 'locations/(:num)',              'Api\\Locations::delete/$1'],
+    ['post',   'locations/(:num)/set-primary',  'Api\\Locations::setPrimary/$1'],
+
+    // Customers — full CRUD. Reads need any authenticated caller; writes are
+    // staff-and-up. The customers/(:num)/... sub-routes above are registered
+    // earlier so they are matched before the bare resource routes.
+    ['get',    'customers',        'Api\\V1\\Customers::index'],
+    ['post',   'customers',        'Api\\V1\\Customers::create',   'api_auth:admin,provider,staff'],
+    ['get',    'customers/(:num)', 'Api\\V1\\Customers::show/$1'],
+    ['put',    'customers/(:num)', 'Api\\V1\\Customers::update/$1', 'api_auth:admin,provider,staff'],
+    ['patch',  'customers/(:num)', 'Api\\V1\\Customers::update/$1', 'api_auth:admin,provider,staff'],
+    ['delete', 'customers/(:num)', 'Api\\V1\\Customers::delete/$1', 'api_auth:admin,provider,staff'],
+
+    // Services — full CRUD. Writes are admin/provider. (Index was previously
+    // the only routed API method; the controller's write methods now have paths.)
+    ['get',    'services',        'Api\\V1\\Services::index'],
+    ['post',   'services',        'Api\\V1\\Services::create',   'api_auth:admin,provider'],
+    ['get',    'services/(:num)', 'Api\\V1\\Services::show/$1'],
+    ['put',    'services/(:num)', 'Api\\V1\\Services::update/$1', 'api_auth:admin,provider'],
+    ['patch',  'services/(:num)', 'Api\\V1\\Services::update/$1', 'api_auth:admin,provider'],
+    ['delete', 'services/(:num)', 'Api\\V1\\Services::delete/$1', 'api_auth:admin,provider'],
+
+    // Categories — full CRUD. Writes are admin/provider.
+    ['get',    'categories',        'Api\\V1\\Categories::index'],
+    ['post',   'categories',        'Api\\V1\\Categories::create',   'api_auth:admin,provider'],
+    ['get',    'categories/(:num)', 'Api\\V1\\Categories::show/$1'],
+    ['put',    'categories/(:num)', 'Api\\V1\\Categories::update/$1', 'api_auth:admin,provider'],
+    ['patch',  'categories/(:num)', 'Api\\V1\\Categories::update/$1', 'api_auth:admin,provider'],
+    ['delete', 'categories/(:num)', 'Api\\V1\\Categories::delete/$1', 'api_auth:admin,provider'],
+
+    // Business hours — global work window. Read any authenticated; write admin.
+    ['get',    'business-hours', 'Api\\V1\\BusinessHours::index'],
+    ['put',    'business-hours', 'Api\\V1\\BusinessHours::update', 'api_auth:admin'],
+    ['post',   'business-hours', 'Api\\V1\\BusinessHours::update', 'api_auth:admin'],
+
+    // Providers — write surface + management show. The public list/read routes
+    // (index, /services, /appointments, /schedule) stay in the public group
+    // below; these add the authenticated writes. Providers are users, so the
+    // 'provider/(:num)/...' sub-routes are more specific and matched first.
+    ['post',   'providers',        'Api\\V1\\Providers::create',   'api_auth:admin,provider'],
+    ['get',    'providers/(:num)', 'Api\\V1\\Providers::show/$1'],
+    ['put',    'providers/(:num)', 'Api\\V1\\Providers::update/$1', 'api_auth:admin,provider'],
+    ['patch',  'providers/(:num)', 'Api\\V1\\Providers::update/$1', 'api_auth:admin,provider'],
+    ['delete', 'providers/(:num)', 'Api\\V1\\Providers::delete/$1', 'api_auth:admin'],
+];
+
+$xsRegisterApiRoutes = static function ($routes) use ($xsApiAuthenticatedRoutes): void {
+    foreach ($xsApiAuthenticatedRoutes as $route) {
+        [$verb, $path, $handler] = $route;
+        $routes->{$verb}($path, $handler, ['filter' => $route[3] ?? 'api_auth']);
+    }
+};
+
+$routes->group('api', ['filter' => 'setup'], function($routes) use ($xsRegisterApiRoutes) {
+    // Unversioned aliases — what the SPA calls today. Not documented externally.
+    $xsRegisterApiRoutes($routes);
+
+    // Canonical versioned paths for external clients.
+    $routes->group('v1', static function ($routes) use ($xsRegisterApiRoutes) {
+        $xsRegisterApiRoutes($routes);
+    });
+
+    // Session-only: role switching mutates the session, so it is meaningless
+    // for token callers and stays on the session filter.
     $routes->post('auth/switch-role', 'Api\\Auth::switchRole', ['filter' => 'auth']);
-
-    // User Management API endpoints (admin/provider only)
-    $routes->get('users', 'UserManagement::apiList', ['filter' => 'role:admin,provider']);
-    $routes->get('user-counts', 'UserManagement::apiCounts', ['filter' => 'role:admin,provider']);
 
     // Note: Legacy GET /api/slots and POST /api/book removed (deprecated since v2.0, sunset 2026-03-01)
     // Use GET /api/availability/slots and POST /api/appointments instead
 
-    // Customer Appointments API (history, stats, autofill) — auth required for numeric-ID routes
-    $routes->get('customers/(:num)/appointments/upcoming', 'Api\\CustomerAppointments::upcoming/$1', ['filter' => 'auth']);
-    $routes->get('customers/(:num)/appointments/history', 'Api\\CustomerAppointments::history/$1', ['filter' => 'auth']);
-    $routes->get('customers/(:num)/appointments/stats', 'Api\\CustomerAppointments::stats/$1', ['filter' => 'auth']);
-    $routes->get('customers/(:num)/appointments', 'Api\\CustomerAppointments::index/$1', ['filter' => 'auth']);
-    $routes->get('customers/(:num)/autofill', 'Api\\CustomerAppointments::autofill/$1', ['filter' => 'auth']);
     // by-hash routes are intentionally unauthenticated — protected by the 64-char customer hash (customer portal)
     $routes->get('customers/by-hash/(:segment)/appointments', 'Api\\CustomerAppointments::byHash/$1');
     $routes->get('customers/by-hash/(:segment)/autofill', 'Api\\CustomerAppointments::autofillByHash/$1');
-    $routes->get('appointments/search', 'Api\\CustomerAppointments::search', ['filter' => 'auth']);
-    $routes->get('appointments/filters', 'Api\\CustomerAppointments::filterOptions', ['filter' => 'auth']);
-
-    // Consolidated Appointments API (unversioned, future-proof)
-    // Specific endpoints BEFORE resource to avoid shadowing
-    $routes->post('appointments', 'Api\\Appointments::create', ['filter' => 'auth']);
-    $routes->get('appointments/summary', 'Api\\Appointments::summary', ['filter' => 'auth']);
-    $routes->get('appointments/counts', 'Api\\Appointments::counts', ['filter' => 'auth']);
-    $routes->post('appointments/check-availability', 'Api\\Appointments::checkAvailability', ['filter' => 'auth']);
-    $routes->get('appointments/(:num)', 'Api\\Appointments::show/$1', ['filter' => 'auth']);
-    $routes->patch('appointments/(:num)', 'Api\\Appointments::update/$1', ['filter' => 'auth']);
-    $routes->delete('appointments/(:num)', 'Api\\Appointments::delete/$1', ['filter' => 'auth']);
-    $routes->patch('appointments/(:num)/status', 'Api\\Appointments::updateStatus/$1', ['filter' => 'auth']);
-    $routes->patch('appointments/(:num)/notes', 'Api\\Appointments::updateNotes/$1', ['filter' => 'auth']);
-    $routes->patch('appointments/(:num)/payment-status', 'Api\\Appointments::updatePaymentStatus/$1', ['filter' => 'auth']);
-    $routes->post('appointments/(:num)/notify', 'Api\\Appointments::notify/$1', ['filter' => 'auth']);
-    $routes->get('appointments', 'Api\\Appointments::index', ['filter' => 'auth']);
-    // Note: dashboard/appointment-stats route is defined earlier in this file (line ~191)
-
-    // Calendar API — pre-computed server-side render models (Phase 3+ rebuild)
-    // Replaces client-side slot-engine.js computation
-    $routes->get('calendar/day',   'Api\\CalendarController::day',   ['filter' => 'auth']);
-    $routes->get('calendar/week',  'Api\\CalendarController::week',  ['filter' => 'auth']);
-    $routes->get('calendar/month', 'Api\\CalendarController::month', ['filter' => 'auth']);
 
     // Availability API - Comprehensive slot availability calculation
     $routes->get('availability/slots', 'Api\\Availability::slots');
@@ -313,16 +405,12 @@ $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
     $routes->get('availability/calendar', 'Api\\Availability::calendar');
     $routes->get('availability/next-available', 'Api\\Availability::nextAvailable');
 
-    // Locations API - Provider multi-location support
+    // Locations API - Provider multi-location support (public reads; the
+    // authenticated writes are registered in $xsApiAuthenticatedRoutes above)
     $routes->get('locations', 'Api\\Locations::index');
     $routes->get('locations/for-date', 'Api\\Locations::forDate');
     $routes->get('locations/available-dates', 'Api\\Locations::availableDates');
     $routes->get('locations/(:num)', 'Api\\Locations::show/$1');
-    $routes->post('locations', 'Api\\Locations::create', ['filter' => 'auth']);
-    $routes->put('locations/(:num)', 'Api\\Locations::update/$1', ['filter' => 'auth']);
-    $routes->patch('locations/(:num)', 'Api\\Locations::update/$1', ['filter' => 'auth']);
-    $routes->delete('locations/(:num)', 'Api\\Locations::delete/$1', ['filter' => 'auth']);
-    $routes->post('locations/(:num)/set-primary', 'Api\\Locations::setPrimary/$1', ['filter' => 'auth']);
 
     // Public API endpoints (no auth required)
     $routes->group('v1', function($routes) {
@@ -337,6 +425,21 @@ $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
         $routes->get('providers/(:num)/services', 'Api\\V1\\Providers::services/$1');
         // Provider appointments - for monthly schedule view
         $routes->get('providers/(:num)/appointments', 'Api\\V1\\Providers::appointments/$1');
+        // Availability — canonical versioned path for external clients. Mirrors
+        // the unversioned /api/availability/* reads (kept for the SPA).
+        $routes->get('availability/slots', 'Api\\Availability::slots');
+        $routes->post('availability/check', 'Api\\Availability::check');
+        $routes->get('availability/summary', 'Api\\Availability::summary');
+        $routes->get('availability/calendar', 'Api\\Availability::calendar');
+        $routes->get('availability/next-available', 'Api\\Availability::nextAvailable');
+        // Providers public reads on the canonical path (list + weekly schedule).
+        // Provider writes/show are in $xsApiAuthenticatedRoutes above.
+        $routes->get('providers', 'Api\\V1\\Providers::index');
+        $routes->get('providers/(:num)/schedule', 'Api\\V1\\Providers::schedule/$1');
+        // Locations RESTful reads on the canonical path (the niche for-date /
+        // available-dates lookups stay unversioned). Writes are in the tuple.
+        $routes->get('locations', 'Api\\Locations::index');
+        $routes->get('locations/(:num)', 'Api\\Locations::show/$1');
     });
     
     // Public providers endpoint (no auth required for calendar)
@@ -346,7 +449,7 @@ $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
 
     // Versioned API v1 (authenticated) - only non-appointment endpoints
     $routes->group('v1', ['filter' => 'api_auth'], function($routes) {
-        $routes->get('services', 'Api\\V1\\Services::index');
+        // Note: services CRUD is registered in $xsApiAuthenticatedRoutes above.
         // Note: providers route is public (defined above) for calendar access
         $routes->post('providers/(\d+)/profile-image', 'Api\\V1\\Providers::uploadProfileImage/$1');
         // Settings API (authenticated)

@@ -87,7 +87,11 @@ class StripeIntegrationService
         $secretKey      = trim((string) ($input['secret_key'] ?? ''));
         $publishableKey = trim((string) ($input['publishable_key'] ?? ''));
         $webhookSecret  = trim((string) ($input['webhook_secret'] ?? ''));
-        $currency       = strtolower(trim((string) ($input['currency'] ?? 'usd')));
+
+        // Deprecated: charges use the business currency (localization.currency) via
+        // PaymentService. Retained only so existing encrypted configs round-trip
+        // unchanged; nothing reads it. Do not reintroduce a Stripe-specific currency.
+        $currency       = strtolower(trim((string) ($input['currency'] ?? '')));
 
         // Preserve existing secret key if omitted
         if ($secretKey === '') {
@@ -111,12 +115,17 @@ class StripeIntegrationService
             return ['ok' => false, 'error' => 'Publishable key must start with pk_live_ or pk_test_.'];
         }
 
-        // Preserve existing webhook secret if omitted
-        if ($webhookSecret === '') {
+        // Preserve existing webhook secret / legacy currency if omitted
+        if ($webhookSecret === '' || $currency === '') {
             $existing = $this->getRow($businessId);
             if ($existing) {
                 $existingConfig = $this->decryptConfig($existing['encrypted_config'] ?? null);
-                $webhookSecret  = (string) ($existingConfig['webhook_secret'] ?? '');
+                if ($webhookSecret === '') {
+                    $webhookSecret = (string) ($existingConfig['webhook_secret'] ?? '');
+                }
+                if ($currency === '') {
+                    $currency = (string) ($existingConfig['currency'] ?? '');
+                }
             }
         }
 

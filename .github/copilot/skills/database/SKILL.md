@@ -12,7 +12,7 @@ description: WebScheduler database schema and migration rules — all 22 runtime
 - **SQLite is not supported** as runtime DB
 - Runtime schema is authoritative
 - Preferred charset/collation for installs: `utf8mb4` / `utf8mb4_unicode_ci`
-- **Total application tables: 22**
+- **Total application tables: 23**
 
 ## 2. Table Catalog by Domain
 
@@ -187,6 +187,18 @@ Columns: `id`, `user_id`, `action`, `target_type`, `target_id`, `old_value`, `ne
 Notes:
 - Verify table name as `xs_audit_logs` in mixed environments
 
+#### `xs_api_keys`
+
+Columns: `id`, `business_id` (default `1`), `user_id`, `name`, `key_prefix` (UNIQUE), `key_hash`, `scopes` (JSON text, nullable), `last_used_at`, `last_used_ip`, `expires_at`, `revoked_at`, `created_by`, `created_at`, `updated_at`
+
+Notes:
+- Model: `App\Models\ApiKeyModel` (`generate()`, `verify()`, `findActiveByPrefix()`, `touch()`, `revoke()`)
+- External API bearer tokens. **Only `key_prefix` and `password_hash()` of the secret are stored** — never the plaintext. Verification is an indexed lookup on `key_prefix` followed by `password_verify()`.
+- Every key is bound to an `xs_users` row; that user supplies the roles the token request runs under (see `api-contract` §Authentication).
+- `revoked_at` is a soft revocation; `expires_at` NULL means no expiry. `scopes` NULL means "inherit the bound user's role permissions".
+- `business_id` is **forward-compatibility only** — there is no businesses table and every row resolves to `1`.
+- Indexes: UNIQUE on `key_prefix`; composite `(user_id, revoked_at)`
+
 ### 2.8 Payment Table
 
 #### `xs_payment_transactions`
@@ -216,6 +228,7 @@ Notes:
 - `xs_provider_staff_assignments.provider_id → xs_users.id`
 - `xs_provider_staff_assignments.staff_id → xs_users.id`
 - `xs_user_roles.user_id → xs_users.id`
+- `xs_api_keys.user_id → xs_users.id`
 - `xs_notification_queue.appointment_id → xs_appointments.id`
 - `xs_notification_delivery_logs.queue_id → xs_notification_queue.id`
 - `xs_audit_logs.user_id → xs_users.id`
@@ -255,21 +268,33 @@ Notes:
 - Pass `start_at` (UTC) directly to template rendering; always convert via `toDisplay()` first
 - Use `date()` / `new \DateTime()` without explicit timezone when building notification content
 
-### 5.3 Notification Pipeline Contract
+### 5.3 `stored_timezone` Semantics
 
+`xs_appointments.stored_timezone` is the zone the appointment **belongs to** — **not** the zone its input arrived in. These are different things and conflating them is a shipped-bug pattern:
+
+- `AppointmentBookingService::createAppointment(array $data, string $timezone, ?string $storedTimezone = null)` takes them as two separate parameters.
+- `$timezone` interprets the incoming `appointment_date` / `appointment_time`. Admin paths normalize to UTC upstream (`AppointmentDateTimeNormalizer`) and correctly pass `'UTC'` here.
+- `$storedTimezone` is persisted to the column and defaults to `TimezoneService::businessTimezone()`. **Never persist `$timezone` directly** — admin bookings would store `'UTC'`.
+- `updateAppointment()` does not rewrite the column; it is set once at creation.
+
+This matters because §5.4 below reads the column back for display. Writing `'UTC'` shifts every confirmation and reminder for that appointment by the full UTC offset.
+
+### 5.4 Notification Pipeline Contract
+
+- `NotificationQueueDispatcher::resolveNotificationTimezone()` prefers `stored_timezone`, falling back to `TimezoneService::businessTimezone()` — see §5.3
 - `NotificationQueueDispatcher` converts `start_at` (UTC) → `start_datetime` (display TZ local string) before calling template service
 - `NotificationQueueDispatcher` passes `display_timezone` key in all `$templateData` arrays
 - `NotificationTemplateService::buildPlaceholders()` creates `new \DateTime($data['start_datetime'], new \DateTimeZone($data['display_timezone'] ?? 'UTC'))` — always explicit timezone
 - Google Calendar links require UTC: convert `start_datetime` from display TZ → UTC before formatting with `\Z`
 
-### 5.4 JS Contract
+### 5.5 JS Contract
 
 - `window.appTimezone` is set by `SettingsManager` from `/api/v1/settings/localization`
 - All scheduler views (`SchedulerCore`, `DayView`) parse API datetimes as UTC via Luxon: `DateTime.fromISO(val, {zone:'utc'}).setZone(appTimezone)`
 - Public booking JS uses `context.timezone` (from `PublicBookingService::buildViewContext()`) — **do not omit this key**
 - `X-Client-Timezone` / `client_timezone` are browser hints only; `localization.timezone` always takes priority
 
-### 5.5 AvailabilityService Contract
+### 5.6 AvailabilityService Contract
 
 - `isSlotAvailable()` `$timezone` parameter is `?string` with `null` resolving via `TimezoneService::businessTimezone()`
 - Always pass the correct business/booking timezone explicitly; do not rely on the default

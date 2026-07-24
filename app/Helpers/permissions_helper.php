@@ -54,6 +54,71 @@
 
 require_once APPPATH . 'Helpers/app_helper.php';
 
+if (!function_exists('resolve_active_role')) {
+    /**
+     * Resolve the highest-privilege role from an authoritative role set.
+     *
+     * Single source of truth for the admin > provider > staff hierarchy, shared
+     * by the session login path (Auth::login) and the API token path
+     * (ApiIdentity::setFromApiKey) so the two identities cannot drift.
+     *
+     * @param array<int, string> $roles    Authoritative roles from xs_user_roles.
+     * @param string|null        $fallback Compatibility primary role (xs_users.role).
+     */
+    function resolve_active_role(array $roles, ?string $fallback = null): string
+    {
+        $hierarchy = ['admin' => 3, 'provider' => 2, 'staff' => 1];
+        $active    = (string) ($fallback ?? '');
+
+        foreach ($roles as $role) {
+            if (($hierarchy[$role] ?? 0) > ($hierarchy[$active] ?? 0)) {
+                $active = (string) $role;
+            }
+        }
+
+        return $active;
+    }
+}
+
+if (!function_exists('api_identity')) {
+    /**
+     * The request-scoped API token identity, or null when unavailable.
+     *
+     * Returns null (rather than throwing) outside a request context so helper
+     * calls from CLI commands and unit tests stay safe.
+     */
+    function api_identity(): ?\App\Services\ApiIdentity
+    {
+        try {
+            $identity = service('apiIdentity');
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        return $identity instanceof \App\Services\ApiIdentity ? $identity : null;
+    }
+}
+
+if (!function_exists('current_identity_user')) {
+    /**
+     * The acting user for this request, in the shape Auth::login() writes.
+     *
+     * Prefers the API token identity so token-authenticated requests resolve
+     * roles and scope exactly as session requests do; falls back to the session.
+     */
+    function current_identity_user(): ?array
+    {
+        $identity = api_identity();
+        if ($identity !== null && $identity->isTokenRequest()) {
+            return $identity->user();
+        }
+
+        $user = session()->get('user');
+
+        return is_array($user) ? $user : null;
+    }
+}
+
 if (!function_exists('current_user_role')) {
     /**
      * Get current user's active role
@@ -61,7 +126,7 @@ if (!function_exists('current_user_role')) {
      */
     function current_user_role(): ?string
     {
-        $user = session()->get('user');
+        $user = current_identity_user();
         return $user['active_role'] ?? $user['role'] ?? null;
     }
 }
@@ -72,6 +137,11 @@ if (!function_exists('current_user_id')) {
      */
     function current_user_id(): ?int
     {
+        $identity = api_identity();
+        if ($identity !== null && $identity->isTokenRequest()) {
+            return $identity->userId();
+        }
+
         return session()->get('user_id');
     }
 }
@@ -99,6 +169,9 @@ if (!function_exists('current_business_id')) {
             $request?->getGet('businessId'),
             $request?->getPost('business_id'),
             $request?->getPost('businessId'),
+            // API token context sits between request params and session so a
+            // token request scopes to the business its key was issued for.
+            api_identity()?->businessId(),
             session()->get('business_id'),
             session()->get('active_business_id'),
             $sessionUser['business_id'] ?? null,
@@ -125,7 +198,7 @@ if (!function_exists('has_role')) {
      */
     function has_role(string|array $roles): bool
     {
-        $user = session()->get('user');
+        $user = current_identity_user();
         if (!$user) {
             return false;
         }

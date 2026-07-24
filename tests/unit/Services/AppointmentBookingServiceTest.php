@@ -51,6 +51,8 @@ final class AppointmentBookingServiceTest extends CIUnitTestCase
     {
         $serviceModel = $this->createMock(ServiceModel::class);
         $serviceModel->method('find')->willReturn(['id' => 5, 'duration_min' => 30]);
+        // Satisfies the provider-offers-service guard, which would otherwise hit the DB.
+        $serviceModel->method('getActiveByProvider')->with(7)->willReturn([['id' => 5]]);
 
         $localization = $this->createMock(LocalizationSettingsService::class);
         $localization->method('getTimezone')->willReturn('UTC');
@@ -97,6 +99,8 @@ final class AppointmentBookingServiceTest extends CIUnitTestCase
     {
         $serviceModel = $this->createMock(ServiceModel::class);
         $serviceModel->method('find')->willReturn(['id' => 5, 'duration_min' => 30]);
+        // Satisfies the provider-offers-service guard, which would otherwise hit the DB.
+        $serviceModel->method('getActiveByProvider')->with(7)->willReturn([['id' => 5]]);
 
         $localization = $this->createMock(LocalizationSettingsService::class);
         $localization->method('getTimezone')->willReturn('UTC');
@@ -178,6 +182,8 @@ final class AppointmentBookingServiceTest extends CIUnitTestCase
     {
         $serviceModel = $this->createMock(ServiceModel::class);
         $serviceModel->method('find')->willReturn(['id' => 5, 'duration_min' => 30]);
+        // Satisfies the provider-offers-service guard, which would otherwise hit the DB.
+        $serviceModel->method('getActiveByProvider')->with(7)->willReturn([['id' => 5]]);
 
         $localization = $this->createMock(LocalizationSettingsService::class);
         $localization->method('getTimezone')->willReturn('UTC');
@@ -248,9 +254,12 @@ final class AppointmentBookingServiceTest extends CIUnitTestCase
         ], 'UTC');
 
         $this->assertFalse($result['success']);
-        $this->assertSame('Failed to create customer record', $result['message']);
-        $this->assertSame(['email' => 'invalid'], $result['errors']);
-    $this->assertSame([['email', 'guest@example.com']], $customerModel->whereCalls);
+        $this->assertSame('Failed to create/update customer record', $result['message']);
+        // The generic upsert-failure branch carries no field-level errors; only the
+        // phone-validation branch populates an 'errors' key.
+        $this->assertArrayNotHasKey('errors', $result);
+        // Email lookup is case/whitespace-insensitive.
+        $this->assertSame([['LOWER(TRIM(email))', 'guest@example.com']], $customerModel->whereCalls);
     }
 
     public function testUpdateAppointmentRejectsInvalidStatus(): void
@@ -384,5 +393,116 @@ final class AppointmentBookingServiceTest extends CIUnitTestCase
         $this->assertSame('Selected location is unavailable for this provider.', $result['message']);
         $this->assertSame(['location_id' => 'invalid'], $result['errors']);
         $this->assertSame([], $eventService->calls);
+    }
+
+    /**
+     * Build the mock graph for a booking that reaches the insert() call, capturing
+     * the persisted row so stored_timezone can be asserted.
+     *
+     * @param array<string, mixed> $captured Populated by reference with the insert payload.
+     */
+    private function bookingServiceCapturingInsert(array &$captured): AppointmentBookingService
+    {
+        $serviceModel = $this->createMock(ServiceModel::class);
+        $serviceModel->method('find')->willReturn(['id' => 5, 'duration_min' => 30]);
+        // Satisfies the provider-offers-service guard, which would otherwise hit the DB.
+        $serviceModel->method('getActiveByProvider')->with(7)->willReturn([['id' => 5]]);
+
+        $localization = $this->createMock(LocalizationSettingsService::class);
+        $localization->method('getTimezone')->willReturn('UTC');
+
+        $locationModel = $this->createMock(LocationModel::class);
+        $locationModel->method('getProviderLocations')->willReturn([]);
+
+        $businessHours = $this->createMock(BusinessHoursService::class);
+        $businessHours->method('validateAppointmentTime')->willReturn(['valid' => true]);
+
+        $availability = $this->createMock(AvailabilityService::class);
+        $availability->method('isSlotAvailable')->willReturn(['available' => true]);
+
+        $customerModel = $this->createMock(CustomerModel::class);
+        $customerModel->method('find')->willReturn(['id' => 55, 'email' => 'guest@example.com']);
+
+        $appointmentModel = $this->createMock(AppointmentModel::class);
+        $appointmentModel->method('insert')
+            ->with($this->callback(static function (array $data) use (&$captured): bool {
+                $captured = $data;
+
+                return true;
+            }))
+            ->willReturn(123);
+
+        return new AppointmentBookingService(
+            $appointmentModel,
+            $customerModel,
+            $serviceModel,
+            $businessHours,
+            $availability,
+            $this->createMock(TimezoneService::class),
+            $localization,
+            $locationModel,
+            $this->createMock(AppointmentEventService::class)
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function bookingPayload(): array
+    {
+        return [
+            'service_id' => 5,
+            'provider_id' => 7,
+            'customer_id' => 55,
+            'appointment_date' => '2026-05-15',
+            'appointment_time' => '09:00',
+        ];
+    }
+
+    /**
+     * `stored_timezone` is the zone the appointment BELONGS to, which is not the
+     * zone its input arrived in. Admin paths normalize to UTC upstream and pass
+     * 'UTC' as $timezone — persisting that as stored_timezone made
+     * NotificationQueueDispatcher render every admin booking's confirmation and
+     * reminder in UTC instead of business-local time.
+     */
+    public function testStoredTimezoneUsesTheExplicitArgumentNotTheInputTimezone(): void
+    {
+        $captured = [];
+        $service  = $this->bookingServiceCapturingInsert($captured);
+
+        $result = $service->createAppointment($this->bookingPayload(), 'UTC', 'America/New_York');
+
+        $this->assertTrue($result['success']);
+        $this->assertSame('America/New_York', $captured['stored_timezone']);
+
+        // The UTC instants themselves still come from the $timezone argument.
+        $this->assertSame('2026-05-15 09:00:00', $captured['start_at']);
+        $this->assertSame('2026-05-15 09:30:00', $captured['end_at']);
+    }
+
+    public function testStoredTimezoneFallsBackToTheBusinessZoneRatherThanUtc(): void
+    {
+        $captured = [];
+        $service  = $this->bookingServiceCapturingInsert($captured);
+
+        // Mirrors AppointmentFormMutationService / AppointmentMutationService, which
+        // pass 'UTC' for $timezone and leave $storedTimezone unset.
+        $result = $service->createAppointment($this->bookingPayload(), 'UTC');
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(TimezoneService::businessTimezone(), $captured['stored_timezone']);
+    }
+
+    public function testInvalidStoredTimezoneFallsBackToTheBusinessZone(): void
+    {
+        $captured = [];
+        $service  = $this->bookingServiceCapturingInsert($captured);
+
+        $result = $service->createAppointment($this->bookingPayload(), 'UTC', 'Not/AZone');
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(TimezoneService::businessTimezone(), $captured['stored_timezone']);
+        $this->assertTrue(TimezoneService::isValidTimezone($captured['stored_timezone']));
     }
 }

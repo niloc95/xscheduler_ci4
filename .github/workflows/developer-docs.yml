@@ -1,0 +1,71 @@
+name: Developer Docs Site
+
+# Rebuilds the standalone developer API docs site (dist/developer/) whenever the
+# spec, the vendored Redoc bundle, or the static templates change, and publishes
+# it as a downloadable artifact. Download it and upload the folder contents to
+# your host's /developer path (e.g. webscheduler.co.za/developer).
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs/technical/openapi.yml'
+      - 'resources/redoc/**'
+      - 'docs-site/**'
+      - 'scripts/build-docs-site.js'
+      - '.github/workflows/developer-docs.yml'
+  workflow_dispatch:
+
+jobs:
+  build-docs-site:
+    name: Build developer docs site
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Build static docs bundle
+        run: node scripts/build-docs-site.js
+
+      - name: Verify bundle contents
+        run: |
+          for f in index.html getting-started.html redoc.standalone.js openapi.yaml; do
+            test -s "dist/developer/$f" || { echo "❌ missing dist/developer/$f"; exit 1; }
+          done
+          echo "✅ dist/developer/ is complete"
+
+      - name: Upload developer-docs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: developer-docs
+          path: dist/developer/
+          retention-days: 30
+
+      # ---------------------------------------------------------------------
+      # Optional: deploy straight to the static host instead of downloading the
+      # artifact manually. Add the relevant repo secrets, then uncomment ONE.
+      #
+      # SFTP / FTPS (cPanel, generic hosting):
+      #   - name: Deploy via FTP
+      #     uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      #     with:
+      #       server:   ${{ secrets.DOCS_FTP_HOST }}
+      #       username: ${{ secrets.DOCS_FTP_USER }}
+      #       password: ${{ secrets.DOCS_FTP_PASSWORD }}
+      #       local-dir: dist/developer/
+      #       server-dir: /public_html/developer/
+      #
+      # Amazon S3 / static bucket:
+      #   - name: Deploy to S3
+      #     run: aws s3 sync dist/developer/ s3://$BUCKET/developer/ --delete
+      #     env:
+      #       AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #       BUCKET:                ${{ secrets.DOCS_S3_BUCKET }}
+      # ---------------------------------------------------------------------

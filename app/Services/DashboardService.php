@@ -119,13 +119,13 @@ class DashboardService
         $user = $this->userModel->find($userId);
         $businessName = env('app.name', 'WebSchedulr');
         
-        // Get localized date format
-        $localizationContext = $this->localizationService->getContext();
-        $dateFormat = $localizationContext['date_format'] ?? 'Y-m-d';
-        $currentDate = date($dateFormat);
-        
         // Get timezone from settings
         $timezone = $this->localizationService->getTimezone();
+
+        // "Today" must be evaluated in the business timezone, not the server's —
+        // near midnight these differ by a full day. There is no date-format
+        // setting; see LocalizationSettingsService.
+        $currentDate = (new \DateTimeImmutable('now', new \DateTimeZone($timezone)))->format('Y-m-d');
 
         return array_merge([
             'business_name' => $businessName,
@@ -1008,9 +1008,8 @@ class DashboardService
             if ($nextDate === $tomorrow) {
                 $label = 'Tomorrow at ' . $time;
             } else {
-                $context = $this->localizationService->getContext();
-                $dateFormat = $context['date_format'] ?? 'M j, Y';
-                $dateLabel = (new \DateTimeImmutable($nextDate, $tz))->format($dateFormat);
+                // No date-format setting exists; see LocalizationSettingsService.
+                $dateLabel = (new \DateTimeImmutable($nextDate, $tz))->format('M j, Y');
                 $label = $dateLabel . ' at ' . $time;
             }
 

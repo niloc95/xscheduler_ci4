@@ -449,12 +449,10 @@ $analyticsActive   = $analyticsProvider !== 'none';
                 <input id="stripe-webhook-secret" type="password" class="form-input font-mono" placeholder="whsec_... (leave blank to keep existing)" autocomplete="new-password">
             </div>
             <div class="form-field">
-                <label class="form-label" for="stripe-currency">Currency</label>
-                <select id="stripe-currency" class="form-input">
-                    <?php foreach (['usd' => 'USD', 'eur' => 'EUR', 'gbp' => 'GBP', 'aud' => 'AUD', 'cad' => 'CAD', 'zar' => 'ZAR'] as $code => $label): ?>
-                    <option value="<?= $code ?>" <?= ($stripeIntegration['currency'] ?? 'usd') === $code ? 'selected' : '' ?>><?= $label ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <label class="form-label">Currency</label>
+                <?php helper('currency'); ?>
+                <p class="form-input bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 cursor-not-allowed"><?= esc(get_app_currency()) ?></p>
+                <p class="form-help">Charges use the business currency. Change it under <strong>Settings &rarr; Localization</strong>.</p>
             </div>
         </div>
         <div class="xs-card-body border-t border-gray-100 dark:border-gray-700 pt-3">

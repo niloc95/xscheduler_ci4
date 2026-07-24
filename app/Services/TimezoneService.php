@@ -225,23 +225,26 @@ class TimezoneService
     /**
      * Get timezone offset in minutes
      * 
-     * Calculates the offset between a specified timezone and UTC.
-     * Positive values are east of UTC, negative values are west.
+     * Calculates the offset between a specified timezone and UTC, using the
+     * JavaScript `Date.prototype.getTimezoneOffset()` sign convention:
+     * **zones east of UTC are NEGATIVE, zones west of UTC are POSITIVE.**
+     * This is the inverse of PHP's own DateTimeZone::getOffset(), and is
+     * deliberate — the value is compared against the browser-supplied
+     * `X-Client-Offset` header captured in App\Filters\TimezoneDetection.
+     *
      * Handles Daylight Saving Time automatically.
-     * 
+     *
      * @param string $timezone IANA timezone identifier
      * @param DateTime|null $date Reference date (for DST handling). If null, uses current date.
-     * @return int Offset in minutes from UTC
-     * 
+     * @return int Offset in minutes from UTC (JS sign convention)
+     *
      * @example
-     * // Get current offset for NYC (EDT in October)
-     * TimezoneService::getOffsetMinutes('America/New_York');
-     * // Returns: -240 (EDT = UTC-4, so -240 minutes)
-     * 
-     * // Get offset for a specific date
-     * $date = new DateTime('2025-01-15');
-     * TimezoneService::getOffsetMinutes('America/New_York', $date);
-     * // Returns: -300 (EST in January = UTC-5, so -300 minutes)
+     * // East of UTC is negative
+     * TimezoneService::getOffsetMinutes('Africa/Johannesburg'); // -120 (UTC+2)
+     *
+     * // West of UTC is positive; DST-aware
+     * TimezoneService::getOffsetMinutes('America/New_York');    // 240 (EDT = UTC-4)
+     * TimezoneService::getOffsetMinutes('America/New_York', new DateTime('2025-01-15')); // 300 (EST = UTC-5)
      */
     public static function getOffsetMinutes($timezone, $date = null)
     {

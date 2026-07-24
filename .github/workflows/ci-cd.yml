@@ -74,6 +74,12 @@ jobs:
           fi
           echo "✅ No unscoped business_hours queries found"
 
+      - name: API spec drift gate — openapi.yml must match the routes
+        run: |
+          # Fails if docs/technical/openapi.yml documents a phantom /api/v1 path
+          # or omits a documented-resource route. Pure route-table check, no DB.
+          php spark api:spec:validate
+
       - name: Build frontend assets
         run: npm run build
         

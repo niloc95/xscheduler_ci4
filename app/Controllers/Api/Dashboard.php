@@ -183,8 +183,8 @@ class Dashboard extends BaseApiController
             ]);
         }
 
-        $sessionUser = session()->get('user');
-        $sessionUser = is_array($sessionUser) ? $sessionUser : null;
+        // Identity-aware: the session user, or the user an API token is bound to.
+        $sessionUser = $this->currentUser();
         $userRole = $this->authorizationService->getUserRole($sessionUser);
 
         if (!$this->authorizationService->canViewDashboardMetrics($userRole)) {

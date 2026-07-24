@@ -832,7 +832,10 @@ class SchedulingSampleDataSeeder extends Seeder
                     }
 
                     try {
-                        $result = $bookingService->createAppointment($payload, self::TIMEZONE);
+                        // Pass the seed timezone for both input interpretation and
+                        // stored_timezone so seeded data stays deterministic regardless
+                        // of the installation's configured business timezone.
+                        $result = $bookingService->createAppointment($payload, self::TIMEZONE, self::TIMEZONE);
                     } catch (\Throwable $e) {
                         $result = ['success' => false, 'message' => $e->getMessage()];
                     }

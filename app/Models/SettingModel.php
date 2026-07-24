@@ -172,6 +172,28 @@ class SettingModel extends BaseModel
         return $result;
     }
 
+    /**
+     * Drop the in-memory settings cache.
+     *
+     * The cache is process-static, which is correct for a single HTTP request but
+     * outlives it in long-running contexts (spark workers, test runs). Call this
+     * after writing settings rows by any route that bypasses upsert() — raw
+     * query-builder writes, migrations, seeders, fixtures — otherwise readers keep
+     * serving the pre-write value.
+     *
+     * @param string|null $key Clear one key, or the whole cache when null.
+     */
+    public static function clearRequestCache(?string $key = null): void
+    {
+        if ($key === null) {
+            self::$requestCache = [];
+
+            return;
+        }
+
+        unset(self::$requestCache[$key]);
+    }
+
     private function castValue(?string $val, string $type)
     {
         if ($val === null) return null;

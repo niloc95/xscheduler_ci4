@@ -11,6 +11,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "docs:build": "node scripts/build-docs-site.js",
     "preview": "vite preview",
     "mailpit:start": "sh scripts/mailpit-dev.sh start",
     "mailpit:stop": "sh scripts/mailpit-dev.sh stop",

@@ -89,6 +89,10 @@ class PaymentService
         $currency     = $this->localization->getCurrency();
         $currencySymbol = $this->localization->getCurrencySymbol();
 
+        // PayFast settles in ZAR only. Never offer it to a business billing in
+        // another currency — the gateway would reject or silently mis-charge.
+        $payfastSupportsCurrency = $currency === 'ZAR';
+
         return [
             'payment_required'   => $deposit > 0,
             'deposit_percentage' => (float) ($service['deposit_percentage'] ?? 0),
@@ -96,7 +100,7 @@ class PaymentService
             'full_price'         => (float) ($service['price'] ?? 0),
             'currency'           => $currency,
             'currency_symbol'    => $currencySymbol,
-            'payfast_available'  => (bool) ($service['payfast_enabled'] ?? false) && $this->payfast->isActive($businessId),
+            'payfast_available'  => $payfastSupportsCurrency && (bool) ($service['payfast_enabled'] ?? false) && $this->payfast->isActive($businessId),
             'stripe_available'   => (bool) ($service['stripe_enabled'] ?? false) && $this->stripe->isActive($businessId),
         ];
     }
@@ -129,6 +133,12 @@ class PaymentService
         string $cancelUrl,
         string $notifyUrl
     ): array {
+        // Server-side mirror of the servicePaymentMeta() gate: PayFast is ZAR-only.
+        $currency = $this->localization->getCurrency();
+        if ($currency !== 'ZAR') {
+            return ['ok' => false, 'error' => "PayFast only settles in ZAR; this business bills in {$currency}."];
+        }
+
         $deposit   = $this->calculateDeposit($service);
         $reference = $this->generateReference($appointmentId, 'pf');
 
@@ -155,7 +165,7 @@ class PaymentService
             'gateway'           => 'payfast',
             'gateway_reference' => $reference,
             'amount'            => $deposit,
-            'currency'          => $this->localization->getCurrency(),
+            'currency'          => $currency,
             'status'            => 'pending',
         ]);
 

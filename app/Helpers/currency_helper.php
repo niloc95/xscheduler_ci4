@@ -70,7 +70,7 @@ if (! function_exists('format_currency')) {
     {
         // Get currency from settings if not provided
         if ($currencyCode === null) {
-            $currencyCode = setting('Localization.currency', 'ZAR');
+            $currencyCode = get_app_currency();
         }
         
         // Ensure amount is numeric
@@ -87,16 +87,20 @@ if (! function_exists('format_currency')) {
     }
 }
 
-if (! function_exists('get_currency_symbol')) {
+if (! function_exists('get_supported_currencies')) {
     /**
-     * Get the currency symbol for a given currency code
+     * ISO 4217 code => display symbol for every currency this app can render.
      *
-     * @param string $currencyCode The ISO 4217 currency code
-     * @return string The currency symbol
+     * Single source of truth. Used by get_currency_symbol() and by settings
+     * validation. Note that some entries (CHF) legitimately use the code itself
+     * as the symbol, so membership — not the returned string — is what decides
+     * whether a currency is supported.
+     *
+     * @return array<string, string>
      */
-    function get_currency_symbol(string $currencyCode): string
+    function get_supported_currencies(): array
     {
-        $symbols = [
+        return [
             'USD' => '$',
             'EUR' => '€',
             'GBP' => '£',
@@ -120,8 +124,34 @@ if (! function_exists('get_currency_symbol')) {
             'AED' => 'د.إ',
             'SAR' => 'ر.س',
         ];
-        
-        return $symbols[$currencyCode] ?? ($currencyCode . ' ');
+    }
+}
+
+if (! function_exists('is_supported_currency')) {
+    /**
+     * Whether the app has a symbol mapping for this ISO 4217 code.
+     *
+     * @param string $currencyCode The ISO 4217 currency code
+     */
+    function is_supported_currency(string $currencyCode): bool
+    {
+        return array_key_exists(strtoupper(trim($currencyCode)), get_supported_currencies());
+    }
+}
+
+if (! function_exists('get_currency_symbol')) {
+    /**
+     * Get the currency symbol for a given currency code.
+     *
+     * Unknown codes degrade to the bare code plus a space (e.g. "XYZ 150.00")
+     * rather than throwing, so a stale setting never blanks out a price.
+     *
+     * @param string $currencyCode The ISO 4217 currency code
+     * @return string The currency symbol
+     */
+    function get_currency_symbol(string $currencyCode): string
+    {
+        return get_supported_currencies()[$currencyCode] ?? ($currencyCode . ' ');
     }
 }
 
@@ -133,7 +163,11 @@ if (! function_exists('get_app_currency')) {
      */
     function get_app_currency(): string
     {
-        return setting('Localization.currency', 'ZAR');
+        // Settings keys are lowercase-dotted. The seeding migration guarantees a
+        // row exists, so the default is only reached before setup completes.
+        $code = setting('localization.currency', 'ZAR');
+
+        return is_string($code) && $code !== '' ? strtoupper($code) : 'ZAR';
     }
 }
 

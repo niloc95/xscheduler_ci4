@@ -207,9 +207,11 @@ class CalendarController extends BaseApiController
             'service_id'       => $serviceId  ? (int) $serviceId  : null,
             'location_id'      => $locationId ? (int) $locationId : null,
             'status'           => $status ?: null,
-            // Role scoping (RISK-06 enforced in AppointmentQueryService)
+            // Role scoping (RISK-06 enforced in AppointmentQueryService).
+            // Identity-aware: resolves the session user or the API token's
+            // bound user, so token callers get the same provider scoping.
             'user_role'        => current_user_role(),
-            'scope_to_user_id' => session()->get('user_id'),
+            'scope_to_user_id' => current_user_id(),
         ];
     }
 }

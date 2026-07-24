@@ -44,7 +44,8 @@ Owner-section map (high-level):
 | Email transport (`MailerService`) | `notifications` |
 | Delivery mode & session info placeholders (`{session_info}`) | `notifications` |
 | Business context resolver | `architecture` |
-| Schema + timezone integrity | `database` |
+| Currency + localization settings model | `architecture` (§8A) |
+| Schema + timezone integrity (incl. `stored_timezone`) | `database` (§5) |
 | Migration base requirement | `database` |
 | Public hash/token URL safety | `public-booking` |
 | Custom field required semantics | `public-booking` |
@@ -70,6 +71,7 @@ Owner-section map (high-level):
 | Public booking SPA | `public-booking` + `ui-ux` + `rules` |
 | Notification templates / placeholders | `notifications` + `rules` |
 | Setup wizard | `setup` + `rules` |
+| Money rendering, currency, or timezone | `architecture` (§8A) + `database` (§5) + `rules` |
 
 ## Source
 

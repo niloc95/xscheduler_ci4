@@ -543,7 +543,8 @@ class UserManagement extends BaseController
      */
     public function apiCounts()
     {
-        $currentUserId = session()->get('user_id');
+        // Identity-aware: the session user, or the user an API token is bound to.
+        $currentUserId = current_user_id();
         if (!$currentUserId) {
             return $this->respondSimpleApiError('Unauthorized', 401);
         }
@@ -568,7 +569,8 @@ class UserManagement extends BaseController
      */
     public function apiList()
     {
-        $currentUserId = session()->get('user_id');
+        // Identity-aware: the session user, or the user an API token is bound to.
+        $currentUserId = current_user_id();
         if (!$currentUserId) {
             return $this->respondSimpleApiError('Unauthorized', 401);
         }

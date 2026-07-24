@@ -228,17 +228,13 @@ class Auth extends BaseController
 
         // Set session data with multi-role support
         $userRoles = $this->userModel->getRolesForUser((int) $user['id']);
-        
-        // Determine active role (highest privilege: admin > provider > staff)
-        $roleHierarchy = ['admin' => 3, 'provider' => 2, 'staff' => 1];
-        $activeRole = $user['role']; // fallback to xs_users.role
-        
-        foreach ($userRoles as $role) {
-            if (($roleHierarchy[$role] ?? 0) > ($roleHierarchy[$activeRole] ?? 0)) {
-                $activeRole = $role;
-            }
-        }
-        
+
+        // Determine active role (highest privilege: admin > provider > staff).
+        // Shared with the API token path via ApiIdentity so the two identity
+        // shapes cannot drift.
+        helper('permissions');
+        $activeRole = resolve_active_role($userRoles, $user['role']);
+
         $sessionData = [
             'user_id' => $user['id'],
             'user' => [

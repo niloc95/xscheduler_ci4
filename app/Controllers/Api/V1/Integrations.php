@@ -56,7 +56,7 @@ class Integrations extends BaseApiController
         $body['intent'] = $intent;
 
         try {
-            $result = $this->getService()->save($body, session()->get('user_id'));
+            $result = $this->getService()->save($body, current_user_id());
 
             if ($result['type'] === 'error') {
                 return $this->error(422, $result['message']);

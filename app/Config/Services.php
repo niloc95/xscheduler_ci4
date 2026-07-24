@@ -29,4 +29,20 @@ class Services extends BaseService
      *     return new \CodeIgniter\Example();
      * }
      */
+
+    /**
+     * Request-scoped identity for token-authenticated API requests.
+     *
+     * Populated by ApiAuthFilter, consumed by BaseApiController and the
+     * permissions helper so token callers and session callers share one
+     * authorization path.
+     */
+    public static function apiIdentity($getShared = true): \App\Services\ApiIdentity
+    {
+        if ($getShared) {
+            return static::getSharedInstance('apiIdentity');
+        }
+
+        return new \App\Services\ApiIdentity();
+    }
 }

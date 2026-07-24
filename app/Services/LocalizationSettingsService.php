@@ -21,17 +21,22 @@
  * 
  * KEY METHODS:
  * -----------------------------------------------------------------------------
- * - getTimeFormat()       : Returns '12h' or '24h'
- * - isTwelveHour()        : Boolean check for 12-hour format
- * - getDateFormat()       : PHP date format string
- * - getTimezone()         : Configured timezone string
- * - getFirstDayOfWeek()   : 0=Sunday, 1=Monday
- * - getCurrency()         : Currency code (USD, EUR, ZAR)
- * - getCurrencySymbol()   : Currency symbol ($, €, R)
- * - formatTime(datetime)  : Format time according to settings
- * - formatDate(datetime)  : Format date according to settings
- * - formatCurrency(amount): Format currency with symbol
- * - getContext()          : Get all localization settings as array
+ * - getTimeFormat()             : Returns '12h' or '24h'
+ * - isTwelveHour()              : Boolean check for 12-hour format
+ * - getTimezone()               : Configured timezone string
+ * - getFirstDayOfWeek()         : 0=Sunday, 1=Monday
+ * - getCurrency()               : Currency code (USD, EUR, ZAR)
+ * - getCurrencySymbol()         : Currency symbol ($, €, R)
+ * - formatCurrency(amount)      : Format currency with symbol
+ * - formatTimeForDisplay(time)  : Format a stored time per the 12h/24h setting
+ * - formatTimeForNativeInput()  : HH:MM for <input type="time">
+ * - normaliseTimeInput(time)    : Parse 12h/24h input to HH:MM:SS
+ * - toMinutes(time)             : Minutes since midnight
+ * - getContext()                : Get all localization settings as array
+ *
+ * NOTE: There is no date-format setting. `localization.date_format` is never
+ * written and no getDateFormat() exists — dates use per-surface PHP format
+ * strings. Do not add reads for a 'date_format' context key.
  * 
  * CACHING:
  * -----------------------------------------------------------------------------
@@ -41,7 +46,7 @@
  * -----------------------------------------------------------------------------
  *     $loc = new LocalizationSettingsService();
  *     $timeFormat = $loc->isTwelveHour() ? 'h:i A' : 'H:i';
- *     $formatted = $loc->formatCurrency(150.00); // "R150.00"
+ *     $formatted = $loc->formatCurrency(150.00); // "$150.00" when currency is USD
  * 
  * @see         app/Models/SettingModel.php for raw settings
  * @see         resources/js/utils/settings-manager.js for JS equivalent

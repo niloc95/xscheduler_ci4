@@ -16,11 +16,19 @@ php spark notifications:backfill-templates      # backfill missing notification 
 php spark notifications:purge-delivery-logs     # purge old delivery log rows
 php spark notifications:export-delivery-logs    # export delivery logs
 php spark notifications:repair-business-id      # repair business_id on queue rows
+php spark api:key create --user <id> --name "<label>"  # issue an external API key (token shown once)
+php spark api:key list                          # list issued keys (secrets never shown)
+php spark api:key revoke --id <keyId>           # revoke a key
+php spark api:spec:validate                     # fail if docs/technical/openapi.yml drifts from the routes (CI gate)
 php spark audit:provider-assignments            # audit provider-service-location mappings
 php spark audit:reminder-pipeline               # audit reminder scheduling pipeline
 php spark audit:purge-logs                      # purge old audit log rows
+php spark api:key create --user <id> --name "<label>" [--scopes a,b] [--expires "+90 days"]
+php spark api:key list                          # all issued API keys + status
+php spark api:key revoke --id <keyId>           # soft-revoke; effective next request
 npm run dev
 npm run build                  # Vite asset compilation only (no ZIP, no version bump)
+npm run docs:build             # Assemble the standalone developer API docs site into dist/developer/ (upload to /developer)
 npm run package:local          # Build deployment ZIP from current source (no Vite rebuild)
 npm run package                # npm run build + npm run package:local
 npm run release:patch          # Bump patch → build → ZIP → commit/tag → push → CI publishes GitHub Release
@@ -51,6 +59,29 @@ See `docs/deployment/UPDATER.md` for full command semantics and the in-app updat
 - Composer packages added: `google/apiclient:^2.0` (Google Calendar), `stripe/stripe-php:^12.0` (Stripe). Keep these updated alongside any API version changes.
 - Integration test DB has a migration sequence gap near `2025-10-22-174832`. `BusinessHoursServiceIntegrationTest` and some journey tests cannot run against the test DB until the gap is repaired.
 - `@material/web` and related `@material/*` packages (9 total) still in `package.json` — unused. Remove with `npm uninstall @material/button @material/card @material/drawer @material/icon-button @material/list @material/textfield @material/top-app-bar @material/web @material-tailwind/html`.
+
+#### Localization debt (deferred from the 2026-07-23 currency/timezone audit)
+
+See `architecture` skill §8A for the owning contract. Resolved in that pass: the `setting('Localization.currency')` casing bug that pinned all money rendering to ZAR; `stored_timezone` being written as `'UTC'` for admin bookings (shifted every admin notification by the UTC offset); the Stripe currency dropdown that `PaymentService` ignored; PayFast being offered to non-ZAR businesses.
+
+Still outstanding:
+
+- **No locale-aware number formatting.** `format_currency()` hardcodes symbol-prefix and `.`/`,` separators. Wrong grouping for EUR/CHF, wrong precision for zero-decimal JPY. Needs `ext-intl` + `NumberFormatter`; `ext-intl` is not currently a composer requirement.
+- **No relocation migration for business hours.** `xs_business_hours.start_time` is naive wall-clock. Changing `localization.timezone` re-interprets existing rows in the new zone. A business genuinely relocating needs a guided migration (and a settings-screen warning), not a silent dropdown change.
+- **No `stored_timezone` backfill.** Appointments created by admins before the fix still hold `'UTC'`. Not backfilled because the booking channel of historical rows can't be reliably inferred. Their notifications remain offset until rebooked.
+- **`TimezoneService::businessTimezone()` process-static cache.** Long-running spark workers serve a stale timezone after a settings change until restarted.
+
+#### API surface debt (deferred from the 2026-07-23 token-auth pass)
+
+Resolved in that pass: the hardcoded `dev-local-token-123` / `dev:dev` shared secrets; the missing `xs_api_keys` table; token requests having no identity for RBAC or business scoping; the session short-circuit that let a browser cookie mask an invalid token; wildcard CORS; appointments/calendar/customers being unreachable by token; the `/api` vs `/api/v1` split.
+
+Still outstanding:
+
+- **Resource coverage is partial.** There is still no API CRUD for customers, services, providers, categories, business hours, or unavailabilities/blocked times. The token surface covers appointments, calendar, customer-appointment reads, locations writes, settings, integrations and users only. Adding a resource means a new controller under `app/Controllers/Api/` plus an entry in `$xsApiAuthenticatedRoutes` (`app/Config/Routes.php`) — both registrations come from that one array.
+- **Scopes are declared but not enforced per-route.** `xs_api_keys.scopes` is stored and readable via `ApiIdentity::hasScope()`, but no route asserts a scope; keys effectively inherit their bound user's role permissions. Wire scope checks in when the resource surface grows.
+- **No key-management UI.** Keys are CLI-only (`php spark api:key`). A Settings → Integrations panel would follow the existing `Api\V1\Integrations` + `integration-hub.js` pattern.
+- **Rate limiting is per-key, in-cache.** 120 req/min via the shared cache; it resets on cache flush and is not coordinated across app servers.
+- **Non-API surfaces still read the session directly.** `DatabaseBackup`, `DashboardPageService` and most of `UserManagement` use `session()->get('user_id')`. That is correct today because those routes are session-only, but any future move to `api_auth` must switch them to `current_user_id()` first.
 
 ### SaaS Multi-Tenancy Gap Register
 

@@ -120,10 +120,14 @@ class BaseApiController extends BaseController
     protected function error(int $status, string $message, ?string $code = null, $details = null)
     {
         helper('logging');
+        helper('permissions');
 
-        $sessionUser = session()->get('user');
-        $userId = session()->get('user_id');
-        $userRole = is_array($sessionUser) ? ($sessionUser['role'] ?? null) : null;
+        // Resolve the acting identity the same way authorization does, so token
+        // requests log the real actor rather than an empty session.
+        $actor = current_identity_user();
+        $userId = current_user_id();
+        $userRole = is_array($actor) ? ($actor['active_role'] ?? $actor['role'] ?? null) : null;
+        $apiKeyId = api_identity()?->keyId();
 
         $logDetails = null;
         if ($details !== null) {
@@ -135,6 +139,7 @@ class BaseApiController extends BaseController
             'error_message' => $message,
             'actor_user_id' => $userId,
             'actor_role' => $userRole,
+            'api_key_id' => $apiKeyId,
             'details' => $logDetails,
         ]);
 
@@ -320,22 +325,36 @@ class BaseApiController extends BaseController
 
     /**
      * Check if current user is authenticated
-     * 
+     *
+     * True for both session callers and Bearer-token callers — ApiAuthFilter
+     * populates ApiIdentity for the latter.
+     *
      * @return bool
      */
     protected function isAuthenticated(): bool
     {
+        helper('permissions');
+
+        if (api_identity()?->isTokenRequest()) {
+            return true;
+        }
+
         return (bool) session()->get('isLoggedIn');
     }
 
     /**
      * Get current authenticated user
-     * 
+     *
+     * Prefers the API token identity, falling back to the session, so every
+     * requireAuth()/requireRole() call site works identically for both.
+     *
      * @return array|null
      */
     protected function currentUser(): ?array
     {
-        return session()->get('user');
+        helper('permissions');
+
+        return current_identity_user();
     }
 
     /**

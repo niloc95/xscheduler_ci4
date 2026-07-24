@@ -68,10 +68,22 @@ A direct `session()->set('user', [...])` overwrite mid-session is a regression a
 Primary filters:
 
 - `setup`
-- `auth`
-- `role:admin`
-- `role:admin,provider`
-- `role:admin,provider,staff`
+- `auth` — session only; redirects HTML callers to login
+- `role:admin` / `role:admin,provider` / `role:admin,provider,staff` — session only
+- `api_auth` — session **or** Bearer token; always JSON
+- `api_auth:admin,provider` — same, plus a role requirement
+
+**Any route intended to be externally callable must use `api_auth`, not `auth` or `role:`.** The session-only filters 401 a valid API token. See `api-contract` §Authentication for the token model and the header-beats-session precedence rule.
+
+## API Token Identity
+
+A Bearer-token request has no session. `ApiAuthFilter` resolves the `xs_users` row the key is bound to, loads its authoritative `xs_user_roles`, and populates `App\Services\ApiIdentity` with **the same user array shape this contract's "Session Contract at Login" defines** — `role`, `roles`, `active_role` included.
+
+Consequence: the Canonical RBAC Pattern below is the *only* pattern needed. There is no separate token authorization path.
+
+The active-role hierarchy (`admin > provider > staff`) lives in exactly one place — `resolve_active_role()` in `app/Helpers/permissions_helper.php`, called by both `Auth::login()` and `ApiIdentity::setFromApiKey()`. Do not reimplement it inline.
+
+Read the acting identity via `current_identity_user()` / `current_user_id()` (token first, session second), never `session()->get('user_id')` directly, in any code reachable from an API route.
 
 ## Auth Hardening Contract (added 2026-05-12)
 

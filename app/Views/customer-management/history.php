@@ -8,6 +8,8 @@
  * - Full appointment history with filters
  * - Provider, service, status, and date range filters
  */
+
+helper('currency');
 ?>
 <?= $this->extend('layouts/dashboard') ?>
 
@@ -266,12 +268,12 @@
                             ?>
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
                                     <span class="material-symbols-outlined text-xs">check_circle</span>
-                                    Paid <?= esc(function_exists('format_currency') ? format_currency((float)$apptPAmount) : 'R'.number_format((float)$apptPAmount, 2)) ?>
+                                    Paid <?= esc(format_currency((float)$apptPAmount)) ?>
                                 </span>
                             <?php elseif ($apptPStatus === 'pending'): ?>
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                                     <span class="material-symbols-outlined text-xs">schedule</span>
-                                    Pending<?= $apptPAmount ? ' ' . (function_exists('format_currency') ? format_currency((float)$apptPAmount) : 'R'.number_format((float)$apptPAmount, 2)) : '' ?>
+                                    Pending<?= $apptPAmount ? ' ' . format_currency((float)$apptPAmount) : '' ?>
                                 </span>
                             <?php else: ?>
                                 <span class="text-xs text-gray-400">—</span>

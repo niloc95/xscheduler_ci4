@@ -62,6 +62,7 @@ use App\Models\ServiceModel;
 use App\Models\UserModel;
 use App\Models\ProviderScheduleModel;
 use App\Services\TimezoneService;
+use App\Services\UserManagementMutationService;
 
 class Providers extends BaseApiController
 {
@@ -75,7 +76,7 @@ class Providers extends BaseApiController
         $includeColors = $this->request->getGet('includeColors') === 'true';
 
         $currentRole = current_user_role();
-        $currentUserId = (int) (session()->get('user_id') ?? 0);
+        $currentUserId = (int) (current_user_id() ?? 0);
 
         $scopedProviderIds = null;
 
@@ -498,5 +499,144 @@ class Providers extends BaseApiController
         return $this->ok([
             'schedule' => $schedule,
         ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // Write surface (admin/provider, gated by the route filter).
+    // All persistence, role checks and auditing live in
+    // UserManagementMutationService — this controller only maps the uniform
+    // service result ({success, statusCode, message, errors, userId}) to the
+    // API envelope. Providers are xs_users rows with the 'provider' role.
+    // -------------------------------------------------------------------------
+
+    // GET /api/v1/providers/{id}
+    public function show($id = null)
+    {
+        if (!$id) {
+            return $this->badRequest('Missing id');
+        }
+
+        $userModel = new UserModel();
+        $provider  = $userModel->find((int) $id);
+        if (!$provider || !in_array('provider', $userModel->getRolesForUser((int) $id), true)) {
+            return $this->notFound('Provider not found');
+        }
+
+        return $this->ok($this->shapeProvider($provider));
+    }
+
+    // POST /api/v1/providers
+    public function create()
+    {
+        $body = $this->request->getJSON(true) ?? $this->request->getPost();
+        if (!$body) {
+            return $this->badRequest('Missing body');
+        }
+
+        // A provider endpoint always creates a provider, whatever the caller sent.
+        $body['roles'] = array_values(array_unique(array_merge(
+            is_array($body['roles'] ?? null) ? $body['roles'] : [],
+            ['provider']
+        )));
+
+        $result = (new UserManagementMutationService())->createUser(
+            (int) current_user_id(),
+            current_identity_user() ?? [],
+            $body
+        );
+
+        return $this->respondFromMutation($result, 201);
+    }
+
+    // PUT|PATCH /api/v1/providers/{id}
+    public function update($id = null)
+    {
+        if (!$id) {
+            return $this->badRequest('Missing id');
+        }
+
+        $userModel = new UserModel();
+        $existing  = $userModel->find((int) $id);
+        if (!$existing || !in_array('provider', $userModel->getRolesForUser((int) $id), true)) {
+            return $this->notFound('Provider not found');
+        }
+
+        $body = $this->request->getJSON(true) ?? $this->request->getPost();
+        if (!$body) {
+            return $this->badRequest('Missing body');
+        }
+
+        $result = (new UserManagementMutationService())->updateUser(
+            (int) $id,
+            (int) current_user_id(),
+            current_identity_user() ?? [],
+            $existing,
+            $body
+        );
+
+        return $this->respondFromMutation($result, 200);
+    }
+
+    // DELETE /api/v1/providers/{id} — soft-delete (deactivate).
+    public function delete($id = null)
+    {
+        if (!$id) {
+            return $this->badRequest('Missing id');
+        }
+
+        $userModel = new UserModel();
+        $existing  = $userModel->find((int) $id);
+        if (!$existing || !in_array('provider', $userModel->getRolesForUser((int) $id), true)) {
+            return $this->notFound('Provider not found');
+        }
+
+        $result = (new UserManagementMutationService())->deactivateUser((int) current_user_id(), (int) $id);
+
+        return $this->respondFromMutation($result, 200);
+    }
+
+    /**
+     * Map the uniform UserManagementMutationService result to an API envelope.
+     *
+     * @param array<string, mixed> $result
+     */
+    private function respondFromMutation(array $result, int $successStatus)
+    {
+        if (empty($result['success'])) {
+            $status  = (int) ($result['statusCode'] ?? 422);
+            $details = $result['errors'] ?? ($result['scheduleErrors'] ?? null);
+            if (isset($result['existingUserId'])) {
+                $details = array_merge(is_array($details) ? $details : [], ['existingUserId' => (int) $result['existingUserId']]);
+            }
+
+            return $this->error($status, (string) ($result['message'] ?? 'Request failed'), null, $details);
+        }
+
+        $data = ['message' => $result['message'] ?? null];
+        if (isset($result['userId'])) {
+            $data['id'] = (int) $result['userId'];
+        }
+
+        return $successStatus === 201 ? $this->created($data) : $this->ok($data);
+    }
+
+    /**
+     * Stable API representation of a provider (user) row.
+     *
+     * @param array<string, mixed> $p
+     * @return array<string, mixed>
+     */
+    private function shapeProvider(array $p): array
+    {
+        return [
+            'id'            => (int) $p['id'],
+            'name'          => $p['name'] ?? trim(($p['first_name'] ?? '') . ' ' . ($p['last_name'] ?? '')),
+            'email'         => $p['email'] ?? null,
+            'phone'         => $p['phone'] ?? null,
+            'slug'          => $p['slug'] ?? null,
+            'color'         => $p['color'] ?? null,
+            'active'        => isset($p['active']) ? (bool) $p['active'] : true,
+            'profile_image' => $this->providerImageUrl($p),
+        ];
     }
 }

@@ -162,7 +162,7 @@ class Settings extends BaseApiController
                 return $this->validationError('Invalid payload - must be JSON or form data');
             }
 
-            $userId = session()->get('user_id');
+            $userId = current_user_id();
             $count = $this->settingsApiService->updateSettings($payload, $userId);
 
             return $this->ok(['updated' => $count]);
@@ -193,11 +193,11 @@ class Settings extends BaseApiController
                 log_message('error', 'Settings update context: method={method} path={path} user_id={user_id}', [
                     'method' => (string) $this->request->getMethod(),
                     'path' => (string) $this->request->getPath(),
-                    'user_id' => (string) (session()->get('user_id') ?? ''),
+                    'user_id' => (string) (current_user_id() ?? ''),
                 ]);
 
                 try {
-                    error_log('[XSCHEDULR][' . $errorId . '] context method=' . (string) $this->request->getMethod() . ' path=' . (string) $this->request->getPath() . ' user_id=' . (string) (session()->get('user_id') ?? ''));
+                    error_log('[XSCHEDULR][' . $errorId . '] context method=' . (string) $this->request->getMethod() . ' path=' . (string) $this->request->getPath() . ' user_id=' . (string) (current_user_id() ?? ''));
                 } catch (\Throwable $ignored) {
                     // no-op
                 }
@@ -219,7 +219,7 @@ class Settings extends BaseApiController
     public function uploadLogo()
     {
         return $this->respondToUploadResult(
-            $this->settingsApiService->uploadLogo($this->request->getFile('company_logo'), session()->get('user_id'))
+            $this->settingsApiService->uploadLogo($this->request->getFile('company_logo'), current_user_id())
         );
     }
 
@@ -230,7 +230,7 @@ class Settings extends BaseApiController
     public function uploadIcon()
     {
         return $this->respondToUploadResult(
-            $this->settingsApiService->uploadIcon($this->request->getFile('company_icon'), session()->get('user_id'))
+            $this->settingsApiService->uploadIcon($this->request->getFile('company_icon'), current_user_id())
         );
     }
 

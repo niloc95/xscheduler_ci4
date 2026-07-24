@@ -49,6 +49,8 @@ Before making any code changes, validate the following:
 - [ ] Am I preserving API response contracts?
 - [ ] Am I reusing queue and booking pipelines?
 - [ ] Am I respecting route filters and role boundaries?
+- [ ] If the route is meant to be externally callable, does it use `api_auth` (not session-only `auth`/`role:`), and is it registered in `$xsApiAuthenticatedRoutes` so both `/api/v1/…` and the unversioned alias exist?
+- [ ] Am I reading the acting user via `current_user_id()` / `current_identity_user()` rather than `session()->get('user_id')` in code an API token can reach?
 - [ ] Am I keeping SPA initialization conventions?
 - [ ] If the controller action redirects back to the current page, does the JSON response include a `redirect` key so `spa.js` can use `forceReload`?
 - [ ] If adding/changing a setting consumed outside the settings panel (sidebar, `<head>`, a JS singleton), did I wire its live-sync and dispatch `settingsSaved` per `frontend` §14 (Settings Live-Sync Contract)? A setting that only shows after a manual reload is a regression.
@@ -122,6 +124,13 @@ rg "role\s*=\s*'provider'|WHERE\s+role\s*=\s*'provider'" app/
 # 3) Detect direct session user overwrites without merge
 rg "session\(\)->set\('user',\s*\[" app/
 
+# 3b) Detect direct session identity reads in API-reachable code. These silently
+#     drop the actor on Bearer-token requests: provider scoping degrades to
+#     unscoped and audit rows get a null user_id. Use current_user_id() /
+#     current_identity_user() instead. (Session-only controllers are the
+#     legitimate hits — verify the route's filter is 'auth'/'role:', not 'api_auth'.)
+rg "session\(\)->get\('user_id'\)|session\(\)->get\('user'\)" app/Controllers/Api app/Services
+
 # 4) Detect inline style regressions in views
 rg "style=\"|<style>" app/Views resources/js
 
@@ -133,6 +142,23 @@ rg "table\('business_hours'\)|from.*xs_business_hours" app/
 
 # 7) Detect SettingModel::getValue() calls (method does not exist; use getByKeys instead)
 rg "->getValue\(" app/Services app/Controllers app/Models
+
+# 8) Detect settings keys with wrong casing — all xs_settings keys are lowercase.dotted.
+#    getByKeys() matches keys EXACTLY, so 'Localization.currency' silently returns the
+#    default forever. This exact bug hardcoded the whole app to ZAR.
+rg "setting\('[A-Z]" app/
+
+# 9) Detect hardcoded currency symbols / money formatting outside currency_helper.
+#    Views must call format_currency(); a literal-symbol fallback is a latent ZAR bug.
+#    (The localization.php currency <option> values are the one legitimate hit.)
+rg "'R'\s*\.\s*number_format|number_format\(.*\)\s*\.\s*'|function_exists\('format_currency'\)" app/Views resources/js
+
+# 10) Detect hardcoded business timezones in executable code. Resolve via
+#     TimezoneService::businessTimezone() / LocalizationSettingsService::getTimezone().
+#     Docblock examples and the localization.php <option> list are legitimate hits,
+#     so filter out comment lines:
+rg -n "Africa/Johannesburg|America/New_York|Europe/London" app/Services app/Controllers resources/js \
+  | grep -vE ":[0-9]+:\s*(\*|//)"
 ```
 
 ### Orphan Section Gate (Docs)
@@ -153,10 +179,16 @@ A doc section passes only if it contains either substantive contract content **o
 - Numeric customer IDs in public URLs
 - UTC/local time mixing in persisted datetimes
 - New authorization logic based on `role` alone
+- Shared/hardcoded API secrets in config or `.env` committed to git — API auth is per-user rows in `xs_api_keys` only
+- Wildcard `Access-Control-Allow-Origin` on `/api/*` (the surface is CSRF-exempt)
+- Session-only filters (`auth`, `role:`) on routes intended for external API clients
 - Mid-session session-user overwrite without `array_merge`
 - Inline style attributes in app-facing templates
 - Querying `xs_business_hours` without a `provider_id` filter
 - Calling `SettingModel::getValue()` (does not exist)
+- Hardcoded currency symbols or `number_format()` money rendering in views — use `format_currency()`
+- Settings keys with non-lowercase segments (`setting('Localization.currency')`)
+- Gateway-specific currency config that diverges from `localization.currency`
 - Inline notification dispatch in HTTP request path (must queue + defer to cron)
 
 ## When to Load Other Skills

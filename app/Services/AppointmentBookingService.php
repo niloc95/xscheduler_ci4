@@ -139,10 +139,17 @@ class AppointmentBookingService
      * Create a new appointment with full validation and customer management
      *
      * @param array $data Appointment data including customer info
-     * @param string $timezone Client timezone (defaults to system timezone)
+     * @param string $timezone The timezone the incoming appointment_date/appointment_time
+     *                         are expressed in. Admin paths normalize to UTC upstream and
+     *                         pass 'UTC' here.
+     * @param string|null $storedTimezone The timezone the appointment *belongs* to, persisted
+     *                         to `stored_timezone` and used by the notification pipeline to
+     *                         render display times. Defaults to the business timezone.
+     *                         This is deliberately NOT $timezone: an admin booking is
+     *                         converted from UTC input but still belongs to the business zone.
      * @return array ['success' => bool, 'appointmentId' => int|null, 'message' => string, 'errors' => array]
      */
-    public function createAppointment(array $data, string $timezone = 'UTC'): array
+    public function createAppointment(array $data, string $timezone = 'UTC', ?string $storedTimezone = null): array
     {
         helper('logging');
 
@@ -191,6 +198,12 @@ class AppointmentBookingService
             // Step 2: Resolve timezone
             if (!TimezoneService::isValidTimezone($timezone)) {
                 $timezone = $this->localizationSettingsService->getTimezone();
+            }
+
+            // The zone the appointment belongs to, independent of the zone its input
+            // was expressed in. Drives notification rendering via `stored_timezone`.
+            if ($storedTimezone === null || !TimezoneService::isValidTimezone($storedTimezone)) {
+                $storedTimezone = TimezoneService::businessTimezone();
             }
             
             // Step 3: Calculate appointment times
@@ -327,7 +340,7 @@ class AppointmentBookingService
                 'service_id'    => $data['service_id'],
                 'start_at'      => $timeData['startUtc'],
                 'end_at'        => $timeData['endUtc'],
-                'stored_timezone' => $timeData['timezone'],
+                'stored_timezone' => $storedTimezone,
                 'status'        => $status,
                 'notes'         => $notes,
                 'location_id'   => $resolvedLocationId,
