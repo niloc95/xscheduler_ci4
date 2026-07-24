@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - No unreleased changes documented yet.
 
+## [2.5.0] - 2026-07-24
+
+### Added
+- feat(api): external REST API, developer docs portal & public docs site
+
+### Changed
+- ci(docs): drop the docs-index auto-commit job
+
 ## [2.4.1] - 2026-07-21
 
 ### Added
@@ -563,7 +571,7 @@ For upgrade instructions between major versions, add or consult a dedicated upgr
 
 ---
 
-[Unreleased]: https://github.com/niloc95/xscheduler_ci4/compare/v2.4.1...HEAD
+[Unreleased]: https://github.com/niloc95/xscheduler_ci4/compare/v2.5.0...HEAD
 [1.0.4]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.4
 [1.0.3]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.3
 [1.0.2]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.2
@@ -599,3 +607,4 @@ For upgrade instructions between major versions, add or consult a dedicated upgr
 [2.2.4]: https://github.com/niloc95/xscheduler_ci4/compare/v2.2.3...v2.2.4
 [2.4.0]: https://github.com/niloc95/xscheduler_ci4/compare/v2.3.0...v2.4.0
 [2.4.1]: https://github.com/niloc95/xscheduler_ci4/compare/v2.4.0...v2.4.1
+[2.5.0]: https://github.com/niloc95/xscheduler_ci4/compare/v2.4.1...v2.5.0
