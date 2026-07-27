@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Google Analytics (GA4) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-J8R1WZ2RLX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    // Consent Mode v2 — default denied until the visitor accepts (POPIA/GDPR).
+    gtag('consent', 'default', { ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'denied', wait_for_update: 500 });
+    try { if (localStorage.getItem('ws-consent') === 'granted') gtag('consent', 'update', { ad_storage: 'granted', ad_user_data: 'granted', ad_personalization: 'granted', analytics_storage: 'granted' }); } catch (e) {}
+    gtag('js', new Date());
+    gtag('config', 'G-J8R1WZ2RLX');
+  </script>
+
+  <title>About — WebScheduler</title>
+  <meta name="description" content="WebScheduler is appointment scheduling software for service businesses that want control of their own data and brand — built for clinics, salons and multi-provider teams." />
+  <link rel="canonical" href="https://webscheduler.co.za/about.html" />
+  <meta name="robots" content="index, follow" />
+  <meta name="theme-color" content="#003049" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0f1419" media="(prefers-color-scheme: dark)" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="WebScheduler" />
+  <meta property="og:title" content="About — WebScheduler" />
+  <meta property="og:description" content="WebScheduler is appointment scheduling software for service businesses that want control of their own data and brand — built for clinics, salons and multi-provider teams." />
+  <meta property="og:url" content="https://webscheduler.co.za/about.html" />
+  <meta property="og:image" content="https://webscheduler.co.za/assets/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="About — WebScheduler" />
+  <meta name="twitter:description" content="WebScheduler is appointment scheduling software for service businesses that want control of their own data and brand — built for clinics, salons and multi-provider teams." />
+  <meta name="twitter:image" content="https://webscheduler.co.za/assets/og-image.png" />
+  <link rel="icon" type="image/svg+xml" href="./assets/logo.svg" />
+  <link rel="stylesheet" href="./assets/styles.css" />
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('xs-theme');
+        if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.classList.toggle('dark', t === 'dark');
+        document.documentElement.style.colorScheme = t;
+      } catch (e) {}
+    })();
+  </script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"WebScheduler","url":"https://webscheduler.co.za/","logo":"https://webscheduler.co.za/assets/logo.svg","description":"Self-hosted appointment scheduling software for service businesses."}</script>
+</head>
+<body class="font-sans">
+
+  <header class="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-[#0f1419]/90">
+    <div class="container-x flex h-16 items-center justify-between">
+      <a href="./index.html" class="flex items-center gap-2.5">
+        <img src="./assets/logo.svg" alt="" class="h-8 w-8" />
+        <span class="text-lg font-extrabold tracking-tight text-primary-900 dark:text-white">WebScheduler</span>
+      </a>
+      <nav class="hidden items-center gap-8 md:flex">
+        <a href="./features.html" class="nav-link">Features</a>
+        <a href="./pricing.html" class="nav-link">Pricing</a>
+        <a href="./about.html" class="nav-link text-primary-600 dark:text-white">About</a>
+        <a href="./contact.html" class="nav-link">Contact</a>
+        <a href="./developer/" class="nav-link">Developers</a>
+      </nav>
+      <div class="flex items-center gap-2">
+        <button data-theme-toggle aria-label="Toggle dark mode" class="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+          <svg class="h-5 w-5 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/></svg>
+          <svg class="hidden h-5 w-5 dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></svg>
+        </button>
+        <a href="./contact.html" class="btn-accent hidden sm:inline-flex">Book a demo</a>
+        <button data-menu-toggle aria-label="Open menu" class="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-600 md:hidden dark:border-slate-700 dark:text-slate-300">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
+        </button>
+      </div>
+    </div>
+    <div data-mobile-menu class="hidden border-t border-slate-200 bg-white px-6 py-4 md:hidden dark:border-slate-800 dark:bg-[#0f1419]">
+      <div class="flex flex-col gap-3">
+        <a href="./features.html" class="nav-link">Features</a>
+        <a href="./pricing.html" class="nav-link">Pricing</a>
+        <a href="./about.html" class="nav-link">About</a>
+        <a href="./contact.html" class="nav-link">Contact</a>
+        <a href="./developer/" class="nav-link">Developers</a>
+        <a href="./contact.html" class="btn-accent mt-2">Book a demo</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="container-x pt-16 pb-8 text-center">
+      <span class="eyebrow">About</span>
+      <h1 class="mx-auto mt-5 max-w-3xl text-4xl font-extrabold tracking-tight text-primary-900 sm:text-5xl dark:text-white">Scheduling software that respects your business</h1>
+      <p class="mx-auto mt-5 max-w-2xl text-lg text-slate-600 dark:text-slate-300">WebScheduler was built for service businesses that want a serious booking platform without handing their customer data to someone else.</p>
+    </section>
+
+    <section class="container-x py-12">
+      <div class="mx-auto max-w-3xl space-y-6 text-lg text-slate-600 dark:text-slate-300">
+        <p>Booking tools tend to force a trade-off: convenient, but your customers and revenue data sit on a platform you don't control — and every booking chips away at your margin. We thought service businesses deserved better.</p>
+        <p>WebScheduler gives clinics, salons and multi-provider teams a complete appointment platform — booking pages, calendars, customer records, services and analytics — that runs on <span class="font-semibold text-primary-900 dark:text-white">your own infrastructure</span>, under <span class="font-semibold text-primary-900 dark:text-white">your own brand</span>. One flat monthly price, no per-booking fees, no data held hostage.</p>
+      </div>
+    </section>
+
+    <!-- Values -->
+    <section class="border-t border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40">
+      <div class="container-x py-16">
+        <div class="grid gap-6 md:grid-cols-3">
+          <div class="card p-6">
+            <h3 class="text-lg font-bold text-primary-900 dark:text-white">Your data, your servers</h3>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Self-hosted from day one. Customer records and revenue stay under your control.</p>
+          </div>
+          <div class="card p-6">
+            <h3 class="text-lg font-bold text-primary-900 dark:text-white">Your brand, everywhere</h3>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">From login to booking page, customers see your business — not a third-party badge.</p>
+          </div>
+          <div class="card p-6">
+            <h3 class="text-lg font-bold text-primary-900 dark:text-white">Priced to be fair</h3>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">A flat monthly price from R160. Take as many bookings as you like.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Who it's for -->
+    <section class="container-x py-16">
+      <div class="mx-auto max-w-2xl text-center">
+        <h2 class="text-3xl font-extrabold tracking-tight text-primary-900 sm:text-4xl dark:text-white">Built for the teams behind the booking</h2>
+      </div>
+      <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="card p-6 text-center"><p class="text-lg font-bold text-primary-900 dark:text-white">Clinics</p><p class="mt-1 text-sm text-slate-500 dark:text-slate-400">GP &amp; specialist practices</p></div>
+        <div class="card p-6 text-center"><p class="text-lg font-bold text-primary-900 dark:text-white">Salons</p><p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Hair &amp; beauty</p></div>
+        <div class="card p-6 text-center"><p class="text-lg font-bold text-primary-900 dark:text-white">Wellness</p><p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Physio &amp; therapy</p></div>
+        <div class="card p-6 text-center"><p class="text-lg font-bold text-primary-900 dark:text-white">Studios</p><p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Multi-provider teams</p></div>
+      </div>
+    </section>
+
+    <section class="border-t border-slate-200 dark:border-slate-800">
+      <div class="container-x py-20 text-center">
+        <h2 class="mx-auto max-w-2xl text-3xl font-extrabold tracking-tight text-primary-900 sm:text-4xl dark:text-white">Let's get you booked</h2>
+        <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <a href="./contact.html" class="btn-accent w-full sm:w-auto">Book a demo</a>
+          <a href="./pricing.html" class="btn-ghost w-full sm:w-auto">See pricing</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-[#0b0f14]">
+    <div class="container-x grid gap-10 py-14 md:grid-cols-4">
+      <div class="md:col-span-1">
+        <a href="./index.html" class="flex items-center gap-2.5">
+          <img src="./assets/logo.svg" alt="" class="h-8 w-8" />
+          <span class="text-lg font-extrabold tracking-tight text-primary-900 dark:text-white">WebScheduler</span>
+        </a>
+        <p class="mt-4 max-w-xs text-sm text-slate-600 dark:text-slate-400">Appointment scheduling for service businesses — on your infrastructure, under your brand.</p>
+      </div>
+      <div>
+        <h3 class="text-sm font-semibold text-primary-900 dark:text-white">Product</h3>
+        <ul class="mt-4 space-y-3 text-sm">
+          <li><a href="./features.html" class="nav-link">Features</a></li>
+          <li><a href="./pricing.html" class="nav-link">Pricing</a></li>
+          <li><a href="./developer/" class="nav-link">Developers</a></li>
+          <li><a href="./contact.html" class="nav-link">Book a demo</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="text-sm font-semibold text-primary-900 dark:text-white">Company</h3>
+        <ul class="mt-4 space-y-3 text-sm">
+          <li><a href="./about.html" class="nav-link">About</a></li>
+          <li><a href="./contact.html" class="nav-link">Contact</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="text-sm font-semibold text-primary-900 dark:text-white">Get started</h3>
+        <p class="mt-4 text-sm text-slate-600 dark:text-slate-400">Plans from R160/month.</p>
+        <a href="./pricing.html" class="btn-primary mt-4">View plans</a>
+      </div>
+    </div>
+    <div class="border-t border-slate-200 dark:border-slate-800">
+      <div class="container-x flex flex-col items-center justify-between gap-4 py-6 text-sm text-slate-500 sm:flex-row dark:text-slate-400">
+        <p>&copy; <span data-year>2026</span> WebScheduler. All rights reserved.</p>
+        <div class="flex gap-6">
+          <a href="#" class="nav-link">Privacy</a>
+          <a href="#" class="nav-link">Terms</a>
+          <a href="./contact.html" class="nav-link">Support</a>
+          <button type="button" data-consent-open class="nav-link">Cookie preferences</button>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="./assets/site.js" defer></script>
+  <script src="./assets/consent.js" defer></script>
+</body>
+</html>

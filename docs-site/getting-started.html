@@ -3,8 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Google Analytics (GA4) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-J8R1WZ2RLX"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        // Consent Mode v2 — default denied until the visitor accepts (POPIA/GDPR).
+        gtag('consent', 'default', { ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'denied', wait_for_update: 500 });
+        try { if (localStorage.getItem('ws-consent') === 'granted') gtag('consent', 'update', { ad_storage: 'granted', ad_user_data: 'granted', ad_personalization: 'granted', analytics_storage: 'granted' }); } catch (e) {}
+        gtag('js', new Date());
+        gtag('config', 'G-J8R1WZ2RLX');
+    </script>
     <title>Getting started · WebScheduler API</title>
     <meta name="description" content="Authenticate, read the response envelope, handle errors, paginate and respect rate limits on the WebScheduler REST API.">
+    <link rel="canonical" href="https://webscheduler.co.za/developer/getting-started.html">
+    <meta name="robots" content="index, follow">
     <style>
         :root { color-scheme: light dark; }
         body {
@@ -40,6 +53,8 @@
 </head>
 <body>
     <div class="wrap">
+        <a class="back" href="../">← WebScheduler home</a>
+        &nbsp;
         <a class="back" href="./index.html">← API reference</a>
         <h1>WebScheduler API — Getting started</h1>
         <p class="lead">A REST API for integrating with your WebScheduler instance:
@@ -98,5 +113,6 @@
            <a href="./index.html">interactive API reference</a>,
            or download the <a href="./openapi.yaml">OpenAPI spec</a>.</p>
     </div>
+    <script src="../assets/consent.js" defer></script>
 </body>
 </html>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="WebScheduler">
+  <rect width="128" height="128" rx="26" fill="#003049"/>
+  <rect x="28" y="32" width="72" height="68" rx="10" fill="#ffffff"/>
+  <rect x="28" y="32" width="72" height="16" rx="10" fill="#EAE2B7"/>
+  <rect x="40" y="58" width="16" height="16" rx="3" fill="#7dd3fc"/>
+  <rect x="60" y="58" width="16" height="16" rx="3" fill="#7dd3fc"/>
+  <rect x="80" y="58" width="16" height="16" rx="3" fill="#7dd3fc"/>
+  <rect x="40" y="78" width="16" height="16" rx="3" fill="#7dd3fc"/>
+  <rect x="60" y="78" width="16" height="16" rx="3" fill="#F77F00"/>
+  <rect x="80" y="78" width="16" height="16" rx="3" fill="#7dd3fc"/>
+</svg>
