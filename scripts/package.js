@@ -124,7 +124,11 @@ const essentialFiles = [
     { src: 'public', dest: 'public' },
     { src: 'spark', dest: 'spark' },
     { src: 'preload.php', dest: 'preload.php' },
-    { src: '.env.example', dest: '.env.example' }
+    { src: '.env.example', dest: '.env.example' },
+    // The developer API portal (DeveloperDocs::spec) serves this spec at runtime
+    // from docs/technical/openapi.yml. docs/ is otherwise excluded from the
+    // package, so ship this one file or /developers/openapi.yaml 404s in prod.
+    { src: 'docs/technical/openapi.yml', dest: 'docs/technical/openapi.yml' },
 ];
 
 // Note: vendor already includes vendor/codeigniter4/framework/system
