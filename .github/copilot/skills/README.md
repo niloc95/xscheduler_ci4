@@ -1,6 +1,6 @@
 # WebScheduler — Engineering Skills
 
-This folder contains the WebScheduler CI4 engineering contract split into 10 focused **skills**. Each skill is a self-contained `SKILL.md` covering one domain. Replace one ~2,000-line context document with targeted skills that load only what's needed for the task at hand.
+This folder contains the WebScheduler CI4 engineering contract split into focused **skills**. Each skill is a self-contained `SKILL.md` covering one domain. Replace one ~2,000-line context document with targeted skills that load only what's needed for the task at hand.
 
 ## Skill Map
 
@@ -18,6 +18,7 @@ This folder contains the WebScheduler CI4 engineering contract split into 10 foc
 | **public-booking** | `/booking/*` routes, `/r/{ref}`, public APIs, policy enforcement, custom field semantics, standalone page asset contract |
 | **setup** | Setup wizard routes, view/layout wiring (`components/setup-layout.php`), JS entry points, DB connection testing |
 | **operations** | Spark commands, testing, known debt, hardening log, next-up queue |
+| **marketing-site** | The standalone marketing website (`marketing-site/`) and developer API portal (`docs-site/` → `/developer`) — build pipeline, screenshots, SEO, analytics/consent, positioning; kept OUT of the app build |
 
 ## Cross-Reference Pattern
 
@@ -54,6 +55,8 @@ Owner-section map (high-level):
 | Pre-merge ripgrep checks | `rules` |
 | Form surface response helpers (`FormResponseTrait`) | `api-contract` |
 | Mutation result DTO (`MutationResult`) | `architecture` |
+| Marketing site build/guards/positioning + excluded-from-app-build rule | `marketing-site` |
+| Developer portal assembly (`build-docs-site.js`) + marketing SEO/analytics/consent | `marketing-site` |
 
 ## Recommended Triggering Pattern
 

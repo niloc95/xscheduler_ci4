@@ -18,6 +18,7 @@ Domain contracts live in `.github/copilot/skills/`. Load the relevant skill(s) b
 | `public-booking` | `/booking/*` routes, `/r/{ref}`, public APIs, standalone page assets, policy enforcement |
 | `setup` | Setup wizard routes, `components/setup-layout.php` wiring, JS entry points |
 | `operations` | Spark commands, testing, known debt, hardening log, next-up queue |
+| `marketing-site` | Public marketing website (`marketing-site/`) & developer API portal (`docs-site/` → `/developer`) — build, screenshots, SEO, GA/consent, positioning; kept out of the app build |
 
 See `.github/copilot/skills/README.md` for the full trigger map and cross-reference pattern.
 
