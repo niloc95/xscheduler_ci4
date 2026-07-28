@@ -367,6 +367,32 @@ $analyticsActive   = $analyticsProvider !== 'none';
         </div>
     </div>
 
+    <!-- WebScheduler Directory card (outbound handoff, not a credential integration) -->
+    <div class="xs-card" data-directory-card>
+        <div class="xs-card-header">
+            <div class="xs-card-header-content">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-2xl text-blue-600">storefront</span>
+                    <div>
+                        <h3 class="xs-card-title">WebScheduler Directory</h3>
+                        <p class="xs-card-subtitle">List your practice publicly</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="xs-card-body">
+            <p class="text-sm text-gray-600 dark:text-gray-400">Publish your practice on the public WebScheduler Directory so new clients can find you. We pre-fill your basic business details from this account — no retyping. You review everything before it goes live.</p>
+        </div>
+        <div class="xs-card-body border-t border-gray-100 dark:border-gray-700 pt-3">
+            <div class="xs-actions-container justify-start gap-2">
+                <a href="<?= site_url('directory/list') ?>" class="xs-btn xs-btn-sm xs-btn-primary" data-no-spa="true">
+                    <span class="material-symbols-outlined text-base">arrow_outward</span>
+                    List your practice
+                </a>
+            </div>
+        </div>
+    </div>
+
 </div><!-- /integration-cards-grid -->
 
 <!-- Section C: Modals -->

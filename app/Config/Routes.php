@@ -103,6 +103,12 @@ $routes->group('user-management', ['filter' => 'setup'], function($routes) {
     $routes->post('delete/(:num)', 'UserManagement::delete/$1', ['filter' => 'role:admin']);
 });
 
+// Directory (SaaS) listing handoff — builds + browser-POSTs the customer's basic
+// business details to the external directory signup so they don't re-enter them.
+$routes->group('directory', ['filter' => 'setup'], function($routes) {
+    $routes->get('list', 'DirectoryHandoff::start', ['filter' => 'role:admin,provider']);
+});
+
 // Customer Management Routes (admins, providers, and staff)
 $routes->group('customer-management', ['filter' => 'setup'], function($routes) {
     $routes->get('', 'CustomerManagement::index', ['filter' => 'role:admin,provider,staff']);
