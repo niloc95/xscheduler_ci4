@@ -136,9 +136,6 @@ typings/
 .nuxt
 dist
 
-# Generated marketing-site CSS (run `npm run site:css` to regenerate for local preview)
-marketing-site/assets/styles.css
-
 # Gatsby files
 .cache/
 public

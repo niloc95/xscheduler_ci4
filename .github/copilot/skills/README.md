@@ -18,7 +18,7 @@ This folder contains the WebScheduler CI4 engineering contract split into focuse
 | **public-booking** | `/booking/*` routes, `/r/{ref}`, public APIs, policy enforcement, custom field semantics, standalone page asset contract |
 | **setup** | Setup wizard routes, view/layout wiring (`components/setup-layout.php`), JS entry points, DB connection testing |
 | **operations** | Spark commands, testing, known debt, hardening log, next-up queue |
-| **marketing-site** | The standalone marketing website (`marketing-site/`) and developer API portal (`docs-site/` → `/developer`) — build pipeline, screenshots, SEO, analytics/consent, positioning; kept OUT of the app build |
+| **public-web** | Public web surfaces in THIS repo — the developer API portal (`docs-site/`, `docs:build`, in-app `/developers`) and the "List on our directory" handoff (`DirectoryHandoffService`). The marketing website + directory SaaS were moved to the `niloc95/marketing` repo |
 
 ## Cross-Reference Pattern
 
@@ -55,8 +55,8 @@ Owner-section map (high-level):
 | Pre-merge ripgrep checks | `rules` |
 | Form surface response helpers (`FormResponseTrait`) | `api-contract` |
 | Mutation result DTO (`MutationResult`) | `architecture` |
-| Marketing site build/guards/positioning + excluded-from-app-build rule | `marketing-site` |
-| Developer portal assembly (`build-docs-site.js`) + marketing SEO/analytics/consent | `marketing-site` |
+| Developer portal assembly (`build-docs-site.js`, in-app `/developers`) | `public-web` |
+| Directory handoff (`Config\Directory`, `DirectoryHandoffService`) | `public-web` |
 
 ## Recommended Triggering Pattern
 
