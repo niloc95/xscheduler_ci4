@@ -354,6 +354,7 @@ class SchedulingSampleDataSeeder extends Seeder
 
             $ids[$def['slug']] = (int) $userModel->insert([
                 'name'          => $def['name'],
+                'slug'          => $this->uniqueProviderSlug($userModel, $def['slug']),
                 'email'         => $email,
                 'phone'         => $this->fakerPhone($faker),
                 'password_hash' => password_hash('SamplePass!23', PASSWORD_BCRYPT),
@@ -368,6 +369,22 @@ class SchedulingSampleDataSeeder extends Seeder
         }
 
         return $ids;
+    }
+
+    /**
+     * Public booking keys providers on slug, so every seeded provider needs a
+     * unique one (idx_xs_users_slug_unique spans all users).
+     */
+    private function uniqueProviderSlug(UserModel $userModel, string $base): string
+    {
+        $candidate = $base;
+        $suffix = 2;
+        while ($userModel->where('slug', $candidate)->countAllResults() > 0) {
+            $candidate = $base . '-' . $suffix;
+            $suffix++;
+        }
+
+        return $candidate;
     }
 
     private function seedStaff(int $count, Generator $faker): array
