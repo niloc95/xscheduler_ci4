@@ -16,14 +16,15 @@ import { RightPanel } from './right-panel.js';
 import { DragDropManager } from './scheduler-drag-drop.js';
 import { SettingsManager } from './settings-manager.js';
 import { AppointmentDetailsModal } from './appointment-details-modal.js';
-import { DEFAULT_PROVIDER_COLOR } from './constants.js';
 import { formatDateNavLabel, syncDateNavLabel } from './date-nav-label.js';
 import { buildCalendarModelUrl } from './calendar-model-url.js';
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
 import { apiRequest } from '../../core/api.js';
+import { appointmentNormalizerMethods } from './appointment-normalizer.js';
+import { backgroundPollMethods } from './scheduler-background-poll.js';
+import { statsBarMethods } from './scheduler-stats-bar.js';
 
 // Stats System - following Car Analogy architecture
-import { getStatsForView, STATUS_DEFINITIONS, getStatusDef, getViewTitle } from './stats/index.js';
 
 export class SchedulerCore {
     constructor(containerId, options = {}) {
@@ -556,93 +557,6 @@ export class SchedulerCore {
         };
     }
 
-    parseOptionalInteger(value) {
-        if (value === null || value === undefined || value === '') {
-            return null;
-        }
-
-        const parsed = Number.parseInt(String(value), 10);
-        return Number.isNaN(parsed) ? null : parsed;
-    }
-
-    parseAppointmentDateTime(value) {
-        if (!value) {
-            return null;
-        }
-
-        const isoDateTimeUtc = DateTime.fromISO(String(value), { zone: 'utc', setZone: true });
-        if (isoDateTimeUtc.isValid) {
-            return isoDateTimeUtc.setZone(this.options.timezone);
-        }
-
-        const isoDateTime = DateTime.fromISO(String(value), { zone: this.options.timezone, setZone: true });
-        if (isoDateTime.isValid) {
-            return isoDateTime;
-        }
-
-        const sqlDateTimeUtc = DateTime.fromSQL(String(value), { zone: 'utc' });
-        if (sqlDateTimeUtc.isValid) {
-            return sqlDateTimeUtc.setZone(this.options.timezone);
-        }
-
-        const sqlDateTime = DateTime.fromSQL(String(value), { zone: this.options.timezone });
-        return sqlDateTime.isValid ? sqlDateTime : null;
-    }
-
-    normalizeAppointment(rawAppointment = {}) {
-        const start = rawAppointment.start ?? rawAppointment.start_at ?? rawAppointment.start_time ?? rawAppointment.startTime ?? rawAppointment.startDateTime ?? null;
-        const end = rawAppointment.end ?? rawAppointment.end_at ?? rawAppointment.end_time ?? rawAppointment.endTime ?? rawAppointment.endDateTime ?? null;
-        const customerName = rawAppointment.customerName ?? rawAppointment.customer_name ?? rawAppointment.name ?? null;
-        const customerEmail = rawAppointment.customerEmail ?? rawAppointment.customer_email ?? rawAppointment.email ?? null;
-        const customerPhone = rawAppointment.customerPhone ?? rawAppointment.customer_phone ?? rawAppointment.phone ?? null;
-        const providerName = rawAppointment.providerName ?? rawAppointment.provider_name ?? null;
-        const serviceName = rawAppointment.serviceName ?? rawAppointment.service_name ?? null;
-        const locationName = rawAppointment.locationName ?? rawAppointment.location_name ?? null;
-        const providerColor = rawAppointment.providerColor ?? rawAppointment.provider_color ?? DEFAULT_PROVIDER_COLOR;
-        const title = rawAppointment.title ?? rawAppointment.customer_name ?? rawAppointment.name ?? null;
-        const deliveryMode = rawAppointment.deliveryMode ?? rawAppointment.delivery_mode ?? 'onsite';
-        const videoLink    = rawAppointment.videoLink    ?? rawAppointment.video_link    ?? '';
-
-        return {
-            ...rawAppointment,
-            id: this.parseOptionalInteger(rawAppointment.id),
-            providerId: this.parseOptionalInteger(rawAppointment.providerId ?? rawAppointment.provider_id),
-            serviceId: this.parseOptionalInteger(rawAppointment.serviceId ?? rawAppointment.service_id),
-            customerId: this.parseOptionalInteger(rawAppointment.customerId ?? rawAppointment.customer_id),
-            locationId: this.parseOptionalInteger(rawAppointment.locationId ?? rawAppointment.location_id),
-            start,
-            end,
-            start_at: rawAppointment.start_at ?? start,
-            start_time: rawAppointment.start_time ?? start,
-            end_at: rawAppointment.end_at ?? end,
-            end_time: rawAppointment.end_time ?? end,
-            title,
-            name: customerName,
-            customerName,
-            customer_name: rawAppointment.customer_name ?? customerName,
-            email: customerEmail,
-            customerEmail,
-            customer_email: rawAppointment.customer_email ?? customerEmail,
-            phone: customerPhone,
-            customerPhone,
-            customer_phone: rawAppointment.customer_phone ?? customerPhone,
-            providerName,
-            provider_name: rawAppointment.provider_name ?? providerName,
-            serviceName,
-            service_name: rawAppointment.service_name ?? serviceName,
-            locationName,
-            location_name: rawAppointment.location_name ?? locationName,
-            providerColor,
-            provider_color: rawAppointment.provider_color ?? providerColor,
-            deliveryMode,
-            delivery_mode: rawAppointment.delivery_mode ?? deliveryMode,
-            videoLink,
-            video_link:    rawAppointment.video_link    ?? videoLink,
-            startDateTime: this.parseAppointmentDateTime(start),
-            endDateTime: this.parseAppointmentDateTime(end)
-        };
-    }
-
     getFilteredAppointments() {
         this.debugLog('📊 getFilteredAppointments called with activeFilters:', this.activeFilters);
         this.debugLog('📊 visibleProviders:', Array.from(this.visibleProviders));
@@ -1053,105 +967,6 @@ export class SchedulerCore {
         }));
     }
 
-    scheduleBackgroundPoll(delay = this.backgroundPollInterval) {
-        if (!this.backgroundPollingEnabled || this.isDestroyed) {
-            return;
-        }
-
-        if (this.backgroundPollTimer) {
-            clearTimeout(this.backgroundPollTimer);
-        }
-
-        this.backgroundPollTimer = setTimeout(() => {
-            this.backgroundPollTimer = null;
-            void this.runBackgroundPoll();
-        }, delay);
-    }
-
-    async runBackgroundPoll() {
-        if (!this.backgroundPollingEnabled || this.isDestroyed) {
-            return;
-        }
-
-        if (!document.getElementById(this.containerId)) {
-            this.stopBackgroundPolling();
-            return;
-        }
-
-        if (document.hidden || this.isInteractionActive() || this.hasActiveInteractiveRequest()) {
-            this.scheduleBackgroundPoll(this.backgroundPollInterval);
-            return;
-        }
-
-        try {
-            await this.refreshAndRender({
-                passive: true,
-                preserveOnError: true,
-                throwOnError: true,
-                reason: 'background-poll',
-            });
-
-            this.backgroundPollAuthFailures = 0;
-            this.scheduleBackgroundPoll(this.backgroundPollInterval);
-        } catch (error) {
-            if (error?.name === 'AbortError') {
-                if (this.backgroundPollingEnabled && !this.isDestroyed) {
-                    this.scheduleBackgroundPoll(this.backgroundPollInterval);
-                }
-                return;
-            }
-
-            if (error?.status === 401) {
-                this.backgroundPollAuthFailures += 1;
-
-                if (this.backgroundPollAuthFailures < this.backgroundPollMaxAuthRetries) {
-                    console.warn(
-                        `[Scheduler] Background polling unauthorized; retrying shortly (${this.backgroundPollAuthFailures}/${this.backgroundPollMaxAuthRetries - 1})`
-                    );
-                    this.scheduleBackgroundPoll(this.backgroundPollAuthRetryDelay);
-                    return;
-                }
-
-                this.stopBackgroundPolling();
-                window.location.href = withBaseUrl('/auth/login');
-                return;
-            }
-
-            console.error('[Scheduler] Background refresh failed:', error);
-            this.scheduleBackgroundPoll(this.backgroundPollRetryDelay);
-        }
-    }
-
-    startBackgroundPolling() {
-        this.backgroundPollingEnabled = true;
-        this.backgroundPollAuthFailures = 0;
-        this.scheduleBackgroundPoll(this.backgroundPollInterval);
-    }
-
-    stopBackgroundPolling() {
-        this.backgroundPollingEnabled = false;
-
-        if (this.backgroundPollTimer) {
-            clearTimeout(this.backgroundPollTimer);
-            this.backgroundPollTimer = null;
-        }
-
-        this.abortActiveDataRequest({ passiveOnly: true });
-    }
-
-    triggerBackgroundRefresh() {
-        if (!this.backgroundPollingEnabled || this.isDestroyed) {
-            return;
-        }
-
-        if (this.backgroundPollTimer) {
-            clearTimeout(this.backgroundPollTimer);
-            this.backgroundPollTimer = null;
-        }
-
-        void this.runBackgroundPoll();
-    }
-
     destroy() {
         this.isDestroyed = true;
         this.stopBackgroundPolling();
@@ -1211,106 +1026,6 @@ export class SchedulerCore {
             view: this.currentView,
             timezone: this.options.timezone
         });
-    }
-    
-    /**
-     * Initialize the Stats Bar component
-     * Uses simple inline counting (same approach as Day Summary which works 100%)
-     */
-    initStatsBar() {
-        this.statsBarContainer = document.getElementById('scheduler-stats-bar');
-        if (!this.statsBarContainer) {
-            this.debugLog('📊 Stats bar container not found, skipping stats bar init');
-            return;
-        }
-        
-        // Listen for filter clicks from stats bar pills
-        this.statsBarContainer.addEventListener('click', (e) => {
-            const pill = e.target.closest('[data-filter-status]');
-            if (pill) {
-                const status = pill.dataset.filterStatus;
-                this.debugLog('📊 Stats bar filter clicked:', status);
-                
-                // Toggle filter - if already active, clear it
-                const currentStatus = this.activeFilters?.status;
-                this.setStatusFilter(status === currentStatus ? null : status);
-            }
-        });
-        
-        this.debugLog('📊 Stats bar initialized');
-    }
-    
-    /**
-     * Update stats bar with current data
-     * Uses Stats Engine for consistent calculation (Car Analogy: Engine powers all views)
-     */
-    updateStatsBar() {
-        if (!this.statsBarContainer) return;
-        
-        // Use Stats Engine for calculation (single source of truth)
-        const stats = getStatsForView(this.appointments, this.currentView, this.currentDate);
-        const activeFilter = this.activeFilters?.status || null;
-        
-        // Get view-appropriate title from config
-        const title = getViewTitle(this.currentView, this.currentDate);
-        
-        // Get date range display (shared with updateDateDisplay)
-        const dateRange = this.getDateRangeText();
-        
-        // Render the stats bar using definitions from Stats Definitions
-        const statusPills = Object.keys(STATUS_DEFINITIONS).map(statusKey => {
-            const def = getStatusDef(statusKey);
-            const count = stats.byStatus[statusKey] || 0;
-            return this.renderStatusPill(statusKey, def.label, count, activeFilter, def);
-        }).join('');
-        
-        // Compact inline rendering — pills only (no card wrapper)
-        this.statsBarContainer.innerHTML = `
-            ${statusPills}
-            ${activeFilter ? `
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-xs text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-500">
-                    Showing: <span class="font-medium capitalize">${activeFilter.replace('-', ' ')}</span>
-                    <button type="button" data-filter-status="${activeFilter}" class="ml-0.5 font-bold hover:text-blue-900 dark:hover:text-blue-100" title="Clear filter">&times;</button>
-                </span>
-            ` : ''}
-        `;
-        
-        this.debugLog('📊 Stats bar updated:', stats.byStatus);
-    }
-    
-    /**
-     * Render a status pill for the stats bar
-     * Uses STATUS_DEFINITIONS for consistent colors (Car Analogy: Sensors)
-     * 
-     * @param {string} status - Status key
-     * @param {string} label - Display label
-     * @param {number} count - Count to display
-     * @param {string|null} activeFilter - Currently active filter
-     * @param {Object} def - Status definition from STATUS_DEFINITIONS
-     */
-    renderStatusPill(status, label, count, activeFilter, def) {
-        const isActive = activeFilter === status;
-        const ringClass = isActive ? 'ring-2 ring-blue-500' : '';
-        
-        // Use colors from status definition
-        const colors = def.colors;
-        const bgClass = `${colors.light.bg} ${colors.dark.bg}`;
-        const borderClass = `${colors.light.border} ${colors.dark.border}`;
-        const textClass = `${colors.light.text} ${colors.dark.text}`;
-        const dotClass = `${colors.light.dot} ${colors.dark.dot}`;
-        
-        return `
-            <button type="button" 
-                    class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border cursor-pointer transition-all
-                           ${bgClass} ${borderClass} ${textClass}
-                           hover:ring-2 hover:ring-offset-1 ${ringClass}"
-                    data-filter-status="${status}"
-                    title="Filter by ${label}">
-                <span class="w-1.5 h-1.5 rounded-full ${dotClass}"></span>
-                <span class="text-xs font-medium">${label}</span>
-                <span class="text-xs font-bold">${count}</span>
-            </button>
-        `;
     }
     
     /**
@@ -1398,3 +1113,5 @@ export class SchedulerCore {
         }
     }
 }
+
+Object.assign(SchedulerCore.prototype, appointmentNormalizerMethods, backgroundPollMethods, statsBarMethods);

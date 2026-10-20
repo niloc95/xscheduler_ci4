@@ -2,12 +2,11 @@
 
 namespace App\Tests\Integration;
 
-use App\Controllers\Setup;
 use App\Database\Migrations\BackfillMissingUserRolePivotRows;
 use App\Models\UserModel;
+use App\Services\SetupInstallerService;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\DatabaseTestTrait;
-use ReflectionMethod;
 
 /**
  * The setup wizard's admin user must exist in BOTH role layers:
@@ -26,10 +25,7 @@ final class SetupAdminUserRoleTest extends CIUnitTestCase
         $db = \Config\Database::connect('tests');
         $email = 'setup-owner-' . uniqid('', true) . '@example.com';
 
-        $method = new ReflectionMethod(Setup::class, 'createAdminUser');
-        $method->setAccessible(true);
-
-        $result = $method->invoke(new Setup(), [
+        $result = (new SetupInstallerService())->createAdminUser([
             'name' => 'Setup Owner',
             'userid' => 'owner',
             'email' => $email,

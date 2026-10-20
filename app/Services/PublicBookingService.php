@@ -82,6 +82,9 @@ use App\Models\LocationModel;
 use App\Models\ServiceModel;
 use App\Models\SettingModel;
 use App\Models\UserModel;
+use App\Services\PublicBooking\PublicBookingDirectory;
+use App\Services\PublicBooking\PublicBookingInputSanitizer;
+use App\Services\PublicBooking\PublicBookingPolicy;
 use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -102,9 +105,9 @@ class PublicBookingService
     private PhoneNumberService $phoneNumberService;
     private CustomerService $customerService;
     private CustomerCustomFieldService $customerCustomFieldService;
-
-    /** @var array<string, bool> */
-    private array $columnExistsCache = [];
+    private PublicBookingDirectory $directory;
+    private PublicBookingPolicy $policy;
+    private PublicBookingInputSanitizer $inputSanitizer;
 
     public function __construct(
         ?BookingSettingsService $bookingSettings = null,
@@ -135,16 +138,19 @@ class PublicBookingService
         $this->phoneNumberService = new PhoneNumberService($this->settings);
         $this->customerService = $customerService ?? new CustomerService($this->customers, $this->phoneNumberService);
         $this->customerCustomFieldService = $customerCustomFieldService ?? new CustomerCustomFieldService($this->customers);
+        $this->directory = new PublicBookingDirectory($this->users, $this->services, $this->locations, $this->settings, $this->localization);
+        $this->policy = new PublicBookingPolicy($this->settings);
+        $this->inputSanitizer = new PublicBookingInputSanitizer($this->phoneNumberService, $this->customerCustomFieldService);
     }
 
     public function buildViewContext(): array
     {
-        $providers = $this->listProviders();
+        $providers = $this->directory->listProviders();
         $initialProviderId = !empty($providers) ? (int) ($providers[0]['id'] ?? 0) : null;
-        $services = $initialProviderId ? $this->listServices($initialProviderId) : [];
+        $services = $initialProviderId ? $this->directory->listServices($initialProviderId) : [];
 
         return [
-            'providers' => $this->sanitizeProvidersForPublic($providers),
+            'providers' => $this->directory->sanitizeProvidersForPublic($providers),
             'services' => $services,
             'fieldConfig' => $this->bookingSettings->getFieldConfiguration(),
             'customFieldConfig' => $this->bookingSettings->getCustomFieldConfiguration(),
@@ -152,16 +158,16 @@ class PublicBookingService
             'timeFormat' => $this->localization->getTimeFormat(),
             'currency' => $this->localization->getCurrency(),
             'currencySymbol' => $this->localization->getCurrencySymbol(),
-            'reschedulePolicy' => $this->getReschedulePolicy(),
-            'cancelPolicy' => $this->getCancelPolicy(),
-            'futureLimitDays' => $this->getFutureLimitDays(),
-            'legalPolicies' => $this->getLegalPolicyContext(),
+            'reschedulePolicy' => $this->policy->getReschedulePolicy(),
+            'cancelPolicy' => $this->policy->getCancelPolicy(),
+            'futureLimitDays' => $this->policy->getFutureLimitDays(),
+            'legalPolicies' => $this->policy->getLegalPolicyContext(),
             'appBaseUrl' => rtrim(base_url(), '/'),
             'bookingBaseUrl' => rtrim(base_url('booking'), '/'),
             'logoUrl' => function_exists('setting_url') ? setting_url('general.company_logo', 'assets/settings/default-logo.svg') : base_url('assets/settings/default-logo.svg'),
             'businessName' => function_exists('setting') ? (setting('general.company_name', 'WebSchedulr') ?: 'WebSchedulr') : 'WebSchedulr',
             'defaultPhoneCountryCode' => $this->phoneNumberService->getDefaultCountryCode(),
-            'seo' => $this->buildSeoContext(),
+            'seo' => $this->directory->buildSeoContext(),
             'zoomConnected'  => (new \App\Services\ZoomIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
             'jitsiConnected' => (new \App\Services\JitsiIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
         ];
@@ -169,13 +175,13 @@ class PublicBookingService
 
     public function buildViewContextForProviderSlug(string $slug): array
     {
-        $provider = $this->findProviderBySlug($slug);
+        $provider = $this->directory->findProviderBySlug($slug);
         if (!$provider) {
             throw new PublicBookingException('Provider not found.', 404);
         }
 
         $providerId = (int) $provider['id'];
-        $providers = $this->listProviders();
+        $providers = $this->directory->listProviders();
         usort($providers, static function (array $a, array $b) use ($providerId): int {
             if ((int) $a['id'] === $providerId) {
                 return -1;
@@ -186,32 +192,32 @@ class PublicBookingService
             return strcmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? ''));
         });
 
-        $services = $this->listServices($providerId);
+        $services = $this->directory->listServices($providerId);
         $context = $this->buildViewContext();
-        $context['providers'] = $this->sanitizeProvidersForPublic($providers);
+        $context['providers'] = $this->directory->sanitizeProvidersForPublic($providers);
         $context['services'] = $services;
         $context['initialFilter'] = [
             'providerSlug' => $slug,
         ];
-        $context['seo'] = $this->buildSeoContextForProvider($provider);
+        $context['seo'] = $this->directory->buildSeoContextForProvider($provider);
 
         return $context;
     }
 
     public function buildViewContextForServiceSlug(string $serviceSlug, ?string $city = null): array
     {
-        $service = $this->findServiceBySlug($serviceSlug);
+        $service = $this->directory->findServiceBySlug($serviceSlug);
         if (!$service) {
             throw new PublicBookingException('Service not found.', 404);
         }
 
         $serviceId = (int) $service['id'];
-        $providers = $this->listProviders($serviceId, $city);
+        $providers = $this->directory->listProviders($serviceId, $city);
         $initialProviderId = !empty($providers) ? (int) $providers[0]['id'] : null;
 
         $services = [];
         if ($initialProviderId !== null) {
-            $providerServices = $this->listServices($initialProviderId);
+            $providerServices = $this->directory->listServices($initialProviderId);
             foreach ($providerServices as $providerService) {
                 if ((int) ($providerService['id'] ?? 0) === $serviceId) {
                     $services[] = $providerService;
@@ -247,30 +253,30 @@ class PublicBookingService
         }
 
         $context = $this->buildViewContext();
-        $context['providers'] = $this->sanitizeProvidersForPublic($providers);
+        $context['providers'] = $this->directory->sanitizeProvidersForPublic($providers);
         $context['services'] = $services;
         $context['initialFilter'] = [
             'serviceSlug' => $serviceSlug,
             'serviceId' => $serviceId,
             'city' => $city,
         ];
-        $context['seo'] = $this->buildSeoContextForService($service, $providers, $city);
+        $context['seo'] = $this->directory->buildSeoContextForService($service, $providers, $city);
 
         return $context;
     }
 
     public function discoverByServiceAndLocation(string $serviceQuery, ?string $city = null, ?string $area = null): array
     {
-        $service = $this->resolveServiceQuery($serviceQuery);
+        $service = $this->directory->resolveServiceQuery($serviceQuery);
         if (!$service) {
             throw new PublicBookingException('No matching service found.', 404, ['service' => 'not_found']);
         }
 
         $serviceId = (int) ($service['id'] ?? 0);
         $serviceSlug = (string) ($service['slug'] ?? '');
-        $locationNeedle = $this->normalizeLocationNeedle($city, $area);
+        $locationNeedle = $this->directory->normalizeLocationNeedle($city, $area);
 
-        $providers = $this->listProviders($serviceId, $city, $area);
+        $providers = $this->directory->listProviders($serviceId, $city, $area);
 
         $flatLocations = [];
         foreach ($providers as $provider) {
@@ -298,13 +304,13 @@ class PublicBookingService
 
         if ($city !== null && $area !== null) {
             $context = $this->buildViewContextForServiceSlug($serviceSlug, null);
-            $context['providers'] = $this->sanitizeProvidersForPublic($providers);
+            $context['providers'] = $this->directory->sanitizeProvidersForPublic($providers);
             $context['initialFilter'] = [
                 'serviceSlug' => $serviceSlug,
                 'serviceId' => $serviceId,
                 'city' => $locationNeedle,
             ];
-            $context['seo'] = $this->buildSeoContextForService($service, $providers, $locationNeedle);
+            $context['seo'] = $this->directory->buildSeoContextForService($service, $providers, $locationNeedle);
         }
 
         $context['discover'] = [
@@ -329,7 +335,7 @@ class PublicBookingService
                 'city' => $city,
                 'area' => $area,
             ],
-            'providers' => $this->sanitizeProvidersForPublic($providers),
+            'providers' => $this->directory->sanitizeProvidersForPublic($providers),
             'locations' => $flatLocations,
             'canonical' => $canonical,
             'context' => $context,
@@ -337,210 +343,19 @@ class PublicBookingService
     }
 
     /**
-     * Build sitemap URLs for public booking pages.
-     *
-     * @return array<int, array{loc: string, lastmod: string, changefreq: string, priority: string}>
+     * Absolute URLs for the public sitemap (booking home, providers, services, locations).
      */
     public function getSitemapUrls(): array
     {
-        $urls = [];
-        $seen = [];
-
-        $addUrl = static function (string $loc, ?string $lastmod = null, string $changefreq = 'weekly', string $priority = '0.7') use (&$urls, &$seen): void {
-            $loc = trim($loc);
-            if ($loc === '' || isset($seen[$loc])) {
-                return;
-            }
-
-            $seen[$loc] = true;
-            $urls[] = [
-                'loc' => $loc,
-                'lastmod' => $lastmod ?: gmdate('c'),
-                'changefreq' => $changefreq,
-                'priority' => $priority,
-            ];
-        };
-
-        $addUrl(base_url('booking'), null, 'daily', '1.0');
-
-        $providerBuilder = $this->users->whereHasRole('provider');
-        if ($this->hasUsersColumn('is_active')) {
-            $providerBuilder->where('is_active', true);
-        } elseif ($this->hasUsersColumn('status')) {
-            $providerBuilder->where('status', 'active');
-        }
-
-        $providerRows = $providerBuilder->findAll();
-        foreach ($providerRows as $provider) {
-            $slug = trim((string) ($provider['slug'] ?? ''));
-            if ($slug === '') {
-                continue;
-            }
-
-            $updated = $this->normalizeIsoDate((string) ($provider['updated_at'] ?? ''));
-            $addUrl(base_url('booking/p/' . rawurlencode($slug)), $updated, 'weekly', '0.8');
-        }
-
-        $serviceRows = $this->services->where('active', 1)->findAll();
-        foreach ($serviceRows as $service) {
-            $serviceId = (int) ($service['id'] ?? 0);
-            $serviceSlug = trim((string) ($service['slug'] ?? ''));
-            if ($serviceId <= 0 || $serviceSlug === '') {
-                continue;
-            }
-
-            $updated = $this->normalizeIsoDate((string) ($service['updated_at'] ?? ''));
-            $addUrl(base_url('booking/s/' . rawurlencode($serviceSlug)), $updated, 'weekly', '0.9');
-
-            $providers = $this->listProviders($serviceId);
-            foreach ($providers as $provider) {
-                foreach (($provider['locations'] ?? []) as $location) {
-                    $segment = $this->buildLocationSegment(
-                        $location['city'] ?? null,
-                        $location['area'] ?? null
-                    );
-                    if ($segment === null) {
-                        continue;
-                    }
-
-                    $addUrl(base_url('booking/s/' . rawurlencode($serviceSlug) . '/' . rawurlencode($segment)), $updated, 'weekly', '0.7');
-                }
-            }
-        }
-
-        return $urls;
+        return $this->directory->getSitemapUrls();
     }
 
     /**
-     * Build SEO context for the public booking page.
-     *
-     * Sources all values from xs_settings (general.* keys) so that the
-     * booking view can render server-side meta tags without any business logic.
-     *
-     * @return array{title: string, description: string, canonical: string, image: string, robots: string, schema: array}
+     * How many days ahead customers may book (booking horizon).
      */
-    public function buildSeoContext(): array
+    public function getFutureLimitDays(): int
     {
-        $keys = [
-            'general.business_name',
-            'general.company_name',
-            'general.business_address',
-            'general.city',
-            'general.telephone_number',
-            'general.mobile_number',
-            'general.company_phone',
-            'general.meta_description',
-            'general.meta_image',
-            'booking.indexable',
-        ];
-
-        $s = $this->settings->getByKeys($keys);
-
-        $businessName = $s['general.business_name']
-            ?? $s['general.company_name']
-            ?? 'WebSchedulr';
-
-        $address  = $s['general.business_address'] ?? '';
-        $city     = $s['general.city'] ?? '';
-        $phone    = $s['general.telephone_number']
-            ?? $s['general.mobile_number']
-            ?? $s['general.company_phone']
-            ?? '';
-
-        $metaDescription = $s['general.meta_description'] ?? '';
-        if ($metaDescription === '') {
-            $metaDescription = 'Book your appointment online at ' . $businessName . '.';
-            if ($city !== '') {
-                $metaDescription .= ' Located in ' . $city . '.';
-            }
-        }
-
-        $metaImage  = $s['general.meta_image'] ?? '';
-        if ($metaImage === '') {
-            $metaImage = base_url('assets/og-default.png');
-        }
-
-        $indexable = isset($s['booking.indexable']) ? (bool) $s['booking.indexable'] : true;
-
-        $businessUrl = base_url('booking');
-        $businessId = rtrim($businessUrl, '/') . '#business';
-
-        $businessSchema = [
-            '@type'    => 'LocalBusiness',
-            '@id'      => $businessId,
-            'name'     => $businessName,
-            'url'      => $businessUrl,
-        ];
-
-        if ($address !== '') {
-            $businessSchema['address'] = [
-                '@type'           => 'PostalAddress',
-                'streetAddress'   => $address,
-                'addressLocality' => $city,
-            ];
-        } elseif ($city !== '') {
-            $businessSchema['address'] = [
-                '@type'           => 'PostalAddress',
-                'addressLocality' => $city,
-            ];
-        }
-
-        if ($phone !== '') {
-            $businessSchema['telephone'] = $phone;
-        }
-
-        if ($metaImage !== '' && strpos($metaImage, 'og-default.png') === false) {
-            $businessSchema['image'] = $metaImage;
-        }
-
-        $providerNodes = [];
-        $employeeRefs = [];
-        foreach ($this->listProviders() as $provider) {
-            $slug = trim((string) ($provider['slug'] ?? ''));
-            if ($slug === '') {
-                continue;
-            }
-
-            $providerUrl = base_url('booking/p/' . rawurlencode($slug));
-            $providerId = rtrim($providerUrl, '/') . '#person';
-            $providerNode = [
-                '@type' => 'Person',
-                '@id' => $providerId,
-                'name' => $provider['name'] ?? 'Provider',
-                'url' => $providerUrl,
-                'worksFor' => [
-                    '@id' => $businessId,
-                ],
-            ];
-
-            if (!empty($provider['title'])) {
-                $providerNode['jobTitle'] = $provider['title'];
-            }
-            if (!empty($provider['profile_image_url'])) {
-                $providerNode['image'] = $provider['profile_image_url'];
-            }
-
-            $providerNodes[] = $providerNode;
-            $employeeRefs[] = ['@id' => $providerId];
-        }
-
-        if ($employeeRefs !== []) {
-            $businessSchema['employee'] = $employeeRefs;
-        }
-
-        $schema = [
-            '@context' => 'https://schema.org',
-            '@graph' => array_merge([$businessSchema], $providerNodes),
-        ];
-
-        return [
-            'title'       => 'Book at ' . $businessName,
-            'description' => $metaDescription,
-            'canonical'   => base_url('booking'),
-            'image'       => $metaImage,
-            'robots'      => $indexable ? 'index, follow' : 'noindex, nofollow',
-            'schema'      => $schema,
-        ];
+        return $this->policy->getFutureLimitDays();
     }
 
     public function getAvailableSlots(int $providerId, int $serviceId, string $date, ?int $locationId = null): array
@@ -609,7 +424,7 @@ class PublicBookingService
 
         // Defense-in-depth: confirm the provider actually offers this service before
         // proceeding to slot/customer resolution or delegating to AppointmentBookingService.
-        if (!$this->providerOffersService((int) $provider['id'], (int) $service['id'])) {
+        if (!$this->directory->providerOffersService((int) $provider['id'], (int) $service['id'])) {
             log_structured('warning', 'public_booking.provider_service_mismatch', [
                 'provider_id' => (int) $provider['id'],
                 'service_id'  => (int) $service['id'],
@@ -626,8 +441,8 @@ class PublicBookingService
 
         $fieldConfig = $this->bookingSettings->getFieldConfiguration();
         $customConfig = $this->bookingSettings->getCustomFieldConfiguration();
-        $customerFields = $this->extractCustomerFields($payload, $fieldConfig, $customConfig);
-        $customFieldValues = $this->extractAppointmentCustomFieldValues($payload, $customConfig, true);
+        $customerFields = $this->inputSanitizer->extractCustomerFields($payload, $fieldConfig, $customConfig);
+        $customFieldValues = $this->inputSanitizer->extractAppointmentCustomFieldValues($payload, $customConfig, true);
 
         $token = $this->generateToken();
 
@@ -637,7 +452,7 @@ class PublicBookingService
             'location_id' => $locationId,
             'appointment_date' => $slot['date'],
             'appointment_time' => $slot['start']->format('H:i'),
-            'notes' => $this->sanitizeString($payload['notes'] ?? null, 1000),
+            'notes' => $this->inputSanitizer->sanitizeString($payload['notes'] ?? null, 1000),
             'delivery_mode' => in_array($payload['delivery_mode'] ?? '', \App\Services\VideoSessionService::VALID_MODES, true)
                 ? $payload['delivery_mode']
                 : 'onsite',
@@ -702,7 +517,7 @@ class PublicBookingService
     public function lookupAppointmentsByContact(?string $email, ?string $phone, ?string $phoneCountryCode = null): array
     {
         $email = $email ? strtolower(trim($email)) : null;
-        $phone = $phone ? $this->normalizePhone($phone, $phoneCountryCode) : null;
+        $phone = $phone ? $this->inputSanitizer->normalizePhone($phone, $phoneCountryCode) : null;
 
         if (!$email && !$phone) {
             throw new PublicBookingException(
@@ -737,7 +552,7 @@ class PublicBookingService
             if ($email && strtolower((string) ($row['customer_email'] ?? '')) === $email) {
                 return true;
             }
-            if ($phone && $this->normalizePhone($row['customer_phone'] ?? null, null) === $phone) {
+            if ($phone && $this->inputSanitizer->normalizePhone($row['customer_phone'] ?? null, null) === $phone) {
                 return true;
             }
             return false;
@@ -755,7 +570,7 @@ class PublicBookingService
             $payload['phone'] ?? null,
             $payload['phone_country_code'] ?? null
         );
-        $this->assertRescheduleWindow($appointment['start_at']);
+        $this->policy->assertRescheduleWindow($appointment['start_at']);
 
         $providerId = (int) ($payload['provider_id'] ?? $appointment['provider_id']);
         $serviceId = (int) ($payload['service_id'] ?? $appointment['service_id']);
@@ -773,15 +588,15 @@ class PublicBookingService
         $newToken = $this->generateToken();
         $customConfig = $this->bookingSettings->getCustomFieldConfiguration();
         $existingCustomFieldValues = $this->customerCustomFieldService->getForCustomer($customerId);
-        $customFieldValues = $this->extractAppointmentCustomFieldValues($payload, $customConfig, true, $existingCustomFieldValues);
-        $clearFlags = $this->extractAppointmentCustomFieldClearFlags($payload, $customConfig);
+        $customFieldValues = $this->inputSanitizer->extractAppointmentCustomFieldValues($payload, $customConfig, true, $existingCustomFieldValues);
+        $clearFlags = $this->inputSanitizer->extractAppointmentCustomFieldClearFlags($payload, $customConfig);
 
         $updatePayload = [
             'provider_id' => $provider['id'],
             'service_id' => $service['id'],
             'appointment_date' => $slot['date'],
             'appointment_time' => $slot['start']->format('H:i'),
-            'notes' => $this->sanitizeString($payload['notes'] ?? $appointment['notes'] ?? null, 1000),
+            'notes' => $this->inputSanitizer->sanitizeString($payload['notes'] ?? $appointment['notes'] ?? null, 1000),
             'public_token' => $newToken,
             'public_token_expires_at' => null,
             'customer_id' => $customerId,
@@ -829,7 +644,7 @@ class PublicBookingService
             $payload['phone'] ?? null,
             $payload['phone_country_code'] ?? null
         );
-        $this->assertCancellationWindow($appointment);
+        $this->policy->assertCancellationWindow($appointment);
 
         $updatePayload = [
             'status' => AppointmentStatus::CANCELLED,
@@ -837,7 +652,7 @@ class PublicBookingService
         ];
 
         if (array_key_exists('cancel_reason', $payload)) {
-            $updatePayload['notes'] = $this->sanitizeString($payload['cancel_reason'], 1000);
+            $updatePayload['notes'] = $this->inputSanitizer->sanitizeString($payload['cancel_reason'], 1000);
         }
 
         $result = $this->bookingService->updateAppointment(
@@ -860,367 +675,6 @@ class PublicBookingService
         return $this->formatPublicAppointment($updated, $token);
     }
 
-    private function listProviders(?int $serviceId = null, ?string $city = null, ?string $area = null): array
-    {
-        $rows = $this->users->getProvidersWithActiveServices();
-        $cityNeedle = $city ? strtolower(trim($city)) : null;
-        $areaNeedle = $area ? strtolower(trim($area)) : null;
-
-        $mapped = array_map(function (array $row) use ($serviceId, $cityNeedle, $areaNeedle): ?array {
-            $providerId = (int) $row['id'];
-            if ($serviceId !== null && !$this->providerOffersService($providerId, $serviceId)) {
-                return null;
-            }
-
-            $locations = $this->locations->getProviderLocationsWithDays($providerId);
-
-            if ($cityNeedle !== null || $areaNeedle !== null) {
-                $locations = array_values(array_filter($locations, static function (array $loc) use ($cityNeedle, $areaNeedle): bool {
-                    $cityText = strtolower(trim((string) ($loc['city'] ?? '')));
-                    $areaText = strtolower(trim((string) ($loc['area'] ?? '')));
-                    $addressText = strtolower(trim((string) ($loc['address'] ?? '')));
-
-                    $cityMatch = true;
-                    if ($cityNeedle !== null) {
-                        $cityMatch = ($cityText !== '' && str_contains($cityText, $cityNeedle))
-                            || ($addressText !== '' && str_contains($addressText, $cityNeedle));
-                    }
-
-                    $areaMatch = true;
-                    if ($areaNeedle !== null) {
-                        $areaMatch = ($areaText !== '' && str_contains($areaText, $areaNeedle))
-                            || ($addressText !== '' && str_contains($addressText, $areaNeedle));
-                    }
-
-                    return $cityMatch && $areaMatch;
-                }));
-            }
-            
-            // Check if provider has locations configured
-            $hasLocations = !empty($locations);
-
-            if (($cityNeedle !== null || $areaNeedle !== null) && !$hasLocations) {
-                return null;
-            }
-            
-            return [
-                'id' => $providerId,
-                'name' => $row['name'] ?? 'Provider',
-                'slug' => $row['slug'] ?? null,
-                'title' => $this->nullableString($row['title'] ?? null),
-                'bio' => $this->nullableString($row['bio'] ?? null),
-                'education' => $this->nullableString($row['education'] ?? null),
-                'qualifications' => $this->nullableString($row['qualifications'] ?? null),
-                'profile_image_url' => $this->providerImageUrl($row['profile_image'] ?? null),
-                'color' => $row['color'] ?? '#3B82F6',
-                'has_locations' => $hasLocations,
-                'locations' => array_map(static function (array $loc): array {
-                    return [
-                        'id' => (int) $loc['id'],
-                        'name' => $loc['name'],
-                        // Address and contact only shown after selection
-                        'address' => $loc['address'],
-                        'city' => $loc['city'] ?? null,
-                        'area' => $loc['area'] ?? null,
-                        'contact_number' => $loc['contact_number'],
-                        'is_primary' => (bool) ($loc['is_primary'] ?? false),
-                        'days' => $loc['days'] ?? [],
-                    ];
-                }, $locations),
-            ];
-
-        }, $rows);
-
-        return array_values(array_filter($mapped, static fn($row) => $row !== null));
-    }
-
-    private function listServices(?int $providerId = null): array
-    {
-        $rows = $providerId ? $this->services->getActiveByProvider($providerId) : $this->services->where('active', 1)->orderBy('name', 'ASC')->findAll();
-
-        helper('currency');
-        $gateways = (new \App\Services\Payment\PaymentService())->getGatewayAvailability(1);
-
-        return array_map(function (array $row) use ($gateways): array {
-            $price      = (float) ($row['price'] ?? 0);
-            $depositPct = $row['deposit_percentage'] !== null ? (float) $row['deposit_percentage'] : null;
-            $depositAmt = ($row['payment_enabled'] ?? 0) && $depositPct
-                ? calculate_deposit_amount($price, $depositPct) : null;
-            return [
-                'id'                 => (int) $row['id'],
-                'name'               => $row['name'] ?? 'Service',
-                'slug'               => $row['slug'] ?? null,
-                'duration'           => (int) ($row['duration_min'] ?? 30),
-                'price'              => $price,
-                'formattedPrice'     => $this->localization->formatCurrency($price),
-                'deliveryModes'      => json_decode($row['delivery_modes'] ?? '["onsite"]', true) ?: ['onsite'],
-                'payment_enabled'    => (bool) ($row['payment_enabled']  ?? false),
-                'payfast_enabled'    => (bool) ($row['payfast_enabled']  ?? false),
-                'stripe_enabled'     => (bool) ($row['stripe_enabled']   ?? false),
-                'payfastAvailable'   => (bool) ($row['payfast_enabled']  ?? false) && $gateways['payfast'],
-                'stripeAvailable'    => (bool) ($row['stripe_enabled']   ?? false) && $gateways['stripe'],
-                'deposit_percentage' => $depositPct,
-                'deposit_amount'     => $depositAmt,
-                'formattedDeposit'   => $depositAmt !== null ? $this->localization->formatCurrency($depositAmt) : null,
-            ];
-        }, $rows);
-    }
-
-    private function buildSeoContextForProvider(array $provider): array
-    {
-        $businessName = function_exists('setting') ? (setting('general.company_name', 'WebSchedulr') ?: 'WebSchedulr') : 'WebSchedulr';
-        $providerName = trim((string) ($provider['name'] ?? 'Provider'));
-        $titlePrefix = trim((string) ($provider['title'] ?? ''));
-        $displayName = trim($titlePrefix . ' ' . $providerName);
-        $description = $this->nullableString($provider['bio'] ?? null);
-        if ($description === null) {
-            $description = sprintf('Book an appointment with %s at %s.', $displayName, $businessName);
-        }
-
-        $slug = (string) ($provider['slug'] ?? '');
-        $canonical = base_url('booking/p/' . rawurlencode($slug));
-        $image = $this->providerImageUrl($provider['profile_image'] ?? null);
-
-        $schema = [
-            '@context' => 'https://schema.org',
-            '@type' => 'Person',
-            'name' => $displayName,
-            'url' => $canonical,
-            'worksFor' => [
-                '@type' => 'Organization',
-                'name' => $businessName,
-            ],
-        ];
-
-        if (!empty($provider['title'])) {
-            $schema['jobTitle'] = $provider['title'];
-        }
-        if (!empty($image)) {
-            $schema['image'] = $image;
-        }
-
-        return [
-            'title' => sprintf('%s | Book Online', $displayName),
-            'description' => $description,
-            'canonical' => $canonical,
-            'image' => $image ?: base_url('assets/og-default.png'),
-            'robots' => 'index, follow',
-            'schema' => $schema,
-        ];
-    }
-
-    private function buildSeoContextForService(array $service, array $providers, ?string $city = null): array
-    {
-        $serviceName = (string) ($service['name'] ?? 'Service');
-        $citySuffix = $city ? (' in ' . $city) : '';
-        $businessName = function_exists('setting') ? (setting('general.company_name', 'WebSchedulr') ?: 'WebSchedulr') : 'WebSchedulr';
-        $providerCount = count($providers);
-        $description = sprintf('Book %s%s at %s. Available with %d provider%s.', $serviceName, $citySuffix, $businessName, $providerCount, $providerCount === 1 ? '' : 's');
-
-        $serviceSlug = (string) ($service['slug'] ?? '');
-        $canonicalPath = $city
-            ? 'booking/s/' . rawurlencode($serviceSlug) . '/' . rawurlencode(strtolower($city))
-            : 'booking/s/' . rawurlencode($serviceSlug);
-        $canonical = base_url($canonicalPath);
-
-        $schema = [
-            '@context' => 'https://schema.org',
-            '@type' => 'Service',
-            'name' => $serviceName,
-            'url' => $canonical,
-            'provider' => array_map(static function (array $provider): array {
-                return [
-                    '@type' => 'Person',
-                    'name' => $provider['name'] ?? 'Provider',
-                ];
-            }, $providers),
-        ];
-
-        if ($city) {
-            $schema['areaServed'] = [
-                '@type' => 'City',
-                'name' => $city,
-            ];
-        }
-
-        return [
-            'title' => sprintf('Book %s%s | %s', $serviceName, $citySuffix, $businessName),
-            'description' => $description,
-            'canonical' => $canonical,
-            'image' => base_url('assets/og-default.png'),
-            'robots' => 'index, follow',
-            'schema' => $schema,
-        ];
-    }
-
-    private function findProviderBySlug(string $slug): ?array
-    {
-        $slug = trim($slug);
-        if ($slug === '') {
-            return null;
-        }
-
-        $builder = $this->users->where('slug', $slug)->whereHasRole('provider');
-        if ($this->hasUsersColumn('is_active')) {
-            $builder->where('is_active', true);
-        } elseif ($this->hasUsersColumn('status')) {
-            $builder->where('status', 'active');
-        }
-
-        return $builder->first();
-    }
-
-    private function findServiceBySlug(string $slug): ?array
-    {
-        $slug = trim($slug);
-        if ($slug === '') {
-            return null;
-        }
-
-        return $this->services->where('slug', $slug)->where('active', 1)->first();
-    }
-
-    private function resolveServiceQuery(string $query): ?array
-    {
-        $query = trim($query);
-        if ($query === '') {
-            return null;
-        }
-
-        $bySlug = $this->findServiceBySlug($query);
-        if ($bySlug) {
-            return $bySlug;
-        }
-
-        $needle = strtolower($query);
-        $rows = $this->services->where('active', 1)->orderBy('name', 'ASC')->findAll();
-        foreach ($rows as $row) {
-            $name = strtolower(trim((string) ($row['name'] ?? '')));
-            if ($name === $needle) {
-                return $row;
-            }
-        }
-
-        foreach ($rows as $row) {
-            $name = strtolower(trim((string) ($row['name'] ?? '')));
-            if ($name !== '' && str_contains($name, $needle)) {
-                return $row;
-            }
-        }
-
-        return null;
-    }
-
-    private function normalizeLocationNeedle(?string $city, ?string $area): ?string
-    {
-        $city = trim((string) $city);
-        $area = trim((string) $area);
-
-        if ($city === '' && $area === '') {
-            return null;
-        }
-
-        if ($area !== '') {
-            return $area;
-        }
-
-        return $city;
-    }
-
-    private function buildLocationSegment(?string $city, ?string $area): ?string
-    {
-        $city = trim((string) $city);
-        $area = trim((string) $area);
-
-        $source = $area !== '' ? $area : $city;
-        if ($source === '') {
-            return null;
-        }
-
-        $segment = strtolower($source);
-        $segment = preg_replace('/[^a-z0-9]+/', '-', $segment) ?? '';
-        $segment = trim($segment, '-');
-
-        return $segment !== '' ? $segment : null;
-    }
-
-    private function normalizeIsoDate(string $value): ?string
-    {
-        $value = trim($value);
-        if ($value === '') {
-            return null;
-        }
-
-        try {
-            return (new DateTimeImmutable($value))->format('c');
-        } catch (Throwable) {
-            return null;
-        }
-    }
-
-    private function providerOffersService(int $providerId, int $serviceId): bool
-    {
-        $serviceRows = $this->services->getActiveByProvider($providerId);
-        foreach ($serviceRows as $row) {
-            if ((int) ($row['id'] ?? 0) === $serviceId) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function providerImageUrl(?string $path): ?string
-    {
-        $path = trim((string) $path);
-        if ($path === '') {
-            return null;
-        }
-
-        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
-            return $path;
-        }
-
-        if (str_starts_with($path, '/')) {
-            return base_url(ltrim($path, '/'));
-        }
-
-        if (str_starts_with($path, 'assets/profile/') || str_starts_with($path, 'assets/providers/')) {
-            return base_url($path);
-        }
-
-        if (str_starts_with($path, 'uploads/providers/')) {
-            return base_url('assets/p/' . basename($path));
-        }
-
-        if (str_starts_with($path, 'uploads/')) {
-            return base_url('writable/' . $path);
-        }
-
-        return base_url('assets/providers/' . ltrim($path, '/'));
-    }
-
-    private function nullableString($value): ?string
-    {
-        $text = trim((string) $value);
-        return $text === '' ? null : $text;
-    }
-
-    /**
-     * Remove internal identifiers from provider payloads emitted to public pages.
-     * Public booking flows should use slug identifiers end-to-end.
-     *
-     * @param array<int, array<string, mixed>> $providers
-     * @return array<int, array<string, mixed>>
-     */
-    private function sanitizeProvidersForPublic(array $providers): array
-    {
-        return array_map(static function (array $provider): array {
-            unset($provider['id']);
-            return $provider;
-        }, $providers);
-    }
-
     /**
      * Resolve public provider identity by slug first (preferred), with id fallback
      * for backward compatibility during migration.
@@ -1229,7 +683,7 @@ class PublicBookingService
     {
         $slug = trim((string) $providerSlug);
         if ($slug !== '') {
-            $provider = $this->findProviderBySlug($slug);
+            $provider = $this->directory->findProviderBySlug($slug);
             if (!$provider) {
                 throw new PublicBookingException('Selected provider is unavailable.', 404, ['provider_slug' => 'invalid']);
             }
@@ -1245,7 +699,7 @@ class PublicBookingService
     {
         $slug = trim((string) ($payload['provider_slug'] ?? ''));
         if ($slug !== '') {
-            $provider = $this->findProviderBySlug($slug);
+            $provider = $this->directory->findProviderBySlug($slug);
             if (!$provider) {
                 throw new PublicBookingException('Selected provider is unavailable.', 404, ['provider_slug' => 'invalid']);
             }
@@ -1263,11 +717,7 @@ class PublicBookingService
         }
 
         $builder = $this->users->where('id', $providerId)->whereHasRole('provider');
-        if ($this->hasUsersColumn('is_active')) {
-            $builder->where('is_active', true);
-        } elseif ($this->hasUsersColumn('status')) {
-            $builder->where('status', 'active');
-        }
+        UserModel::applyActiveFilter($builder);
 
         $provider = $builder->first();
         if (!$provider) {
@@ -1275,51 +725,6 @@ class PublicBookingService
         }
 
         return $provider;
-    }
-
-    private function hasUsersColumn(string $column): bool
-    {
-        $key = 'users.' . $column;
-
-        if (array_key_exists($key, $this->columnExistsCache)) {
-            return $this->columnExistsCache[$key];
-        }
-
-        $db = \Config\Database::connect();
-        $exists = false;
-
-        try {
-            if (!method_exists($db, 'getFieldData')) {
-                $this->columnExistsCache[$key] = true;
-                return true;
-            }
-
-            $candidates = [];
-            if (method_exists($db, 'prefixTable')) {
-                $candidates[] = (string) $db->prefixTable('users');
-            }
-            $candidates[] = 'users';
-
-            foreach (array_values(array_unique($candidates)) as $candidate) {
-                try {
-                    $fields = $db->getFieldData($candidate);
-                    foreach ($fields as $field) {
-                        if ((string) ($field->name ?? '') === $column) {
-                            $exists = true;
-                            break 2;
-                        }
-                    }
-                } catch (Throwable $inner) {
-                    // Try the next candidate table name.
-                }
-            }
-        } catch (Throwable $e) {
-            $exists = false;
-        }
-
-        $this->columnExistsCache[$key] = $exists;
-
-        return $exists;
     }
 
     private function resolveBookingLocation(int $providerId, $requestedLocationId): ?int
@@ -1441,7 +846,7 @@ class PublicBookingService
     {
         $fieldConfig = $this->bookingSettings->getFieldConfiguration();
         $customConfig = $this->bookingSettings->getCustomFieldConfiguration();
-        $data = $this->extractCustomerFields($payload, $fieldConfig, $customConfig);
+        $data = $this->inputSanitizer->extractCustomerFields($payload, $fieldConfig, $customConfig);
 
         try {
             // preserveNames: a public booking with a shared email but a
@@ -1458,177 +863,6 @@ class PublicBookingService
         }
 
         return (int) ($upsert['id'] ?? 0);
-    }
-
-    private function extractCustomerFields(array $payload, array $fieldConfig, array $customConfig): array
-    {
-        $fields = [];
-        $firstName = $this->sanitizeString($payload['first_name'] ?? null, 100);
-        $lastName = $this->sanitizeString($payload['last_name'] ?? null, 100);
-        $email = $this->sanitizeString($payload['email'] ?? null, 150);
-        $rawPhone = trim((string) ($payload['phone'] ?? ''));
-        $phone = $this->normalizePhone($payload['phone'] ?? null, $payload['phone_country_code'] ?? null);
-        $address = $this->sanitizeString($payload['address'] ?? null, 255);
-        $notes = $this->sanitizeString($payload['customer_notes'] ?? $payload['notes'] ?? null, 1000);
-
-        if (($fieldConfig['first_name']['required'] ?? false) && $firstName === null) {
-            throw new PublicBookingException('First name is required.', 422, ['first_name' => 'required']);
-        }
-        if ($firstName !== null && !preg_match("/^[\p{L}\p{M}\'-\. ]+$/u", $firstName)) {
-            throw new PublicBookingException('First name must contain only letters, spaces, hyphens, apostrophes, or periods.', 422, ['first_name' => 'invalid']);
-        }
-        if (($fieldConfig['last_name']['required'] ?? false) && $lastName === null) {
-            throw new PublicBookingException('Last name is required.', 422, ['last_name' => 'required']);
-        }
-        if ($lastName !== null && !preg_match("/^[\p{L}\p{M}\'-\. ]+$/u", $lastName)) {
-            throw new PublicBookingException('Last name must contain only letters, spaces, hyphens, apostrophes, or periods.', 422, ['last_name' => 'invalid']);
-        }
-        if (($fieldConfig['email']['required'] ?? false) && $email === null) {
-            throw new PublicBookingException('Email is required.', 422, ['email' => 'required']);
-        }
-        if ($rawPhone !== '' && $phone === null) {
-            throw new PublicBookingException(
-                'Please provide a valid phone number in E.164 format (for example +27821234567).',
-                422,
-                ['phone' => 'invalid']
-            );
-        }
-        if (($fieldConfig['phone']['required'] ?? false) && $phone === null) {
-            throw new PublicBookingException('Phone number is required.', 422, ['phone' => 'required']);
-        }
-        if (($fieldConfig['address']['required'] ?? false) && $address === null) {
-            throw new PublicBookingException('Address is required.', 422, ['address' => 'required']);
-        }
-        if (($fieldConfig['notes']['required'] ?? false) && $notes === null) {
-            throw new PublicBookingException('Notes are required.', 422, ['notes' => 'required']);
-        }
-
-        if (($fieldConfig['first_name']['display'] ?? true) && $firstName !== null) {
-            $fields['first_name'] = $firstName;
-        }
-        if (($fieldConfig['last_name']['display'] ?? true) && $lastName !== null) {
-            $fields['last_name'] = $lastName;
-        }
-        if (($fieldConfig['email']['display'] ?? true) && $email !== null) {
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                throw new PublicBookingException('Please provide a valid email address.', 422, ['email' => 'invalid']);
-            }
-            $fields['email'] = strtolower($email);
-        }
-        if (($fieldConfig['phone']['display'] ?? true) && $phone !== null) {
-            $fields['phone'] = $phone;
-        }
-        if (($fieldConfig['address']['display'] ?? false) && $address !== null) {
-            $fields['address'] = $address;
-        }
-        if (($fieldConfig['notes']['display'] ?? false) && $notes !== null) {
-            $fields['notes'] = $notes;
-        }
-
-
-        if (empty($fields['first_name']) && !empty($fields['last_name'])) {
-            $fields['first_name'] = 'Guest';
-        }
-        if (empty($fields['first_name']) && empty($fields['last_name'])) {
-            $fields['first_name'] = 'Guest';
-        }
-
-        if (empty($fields['email']) && empty($fields['phone'])) {
-            throw new PublicBookingException('Please supply at least one contact method (email or phone).', 422, ['contact' => 'required']);
-        }
-
-        return $fields;
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function extractAppointmentCustomFieldValues(
-        array $payload,
-        array $customConfig,
-        bool $respectRequired,
-        array|string|null $storedValues = null
-    ): array
-    {
-        $values = [];
-
-        foreach ($customConfig as $field => $config) {
-            $rawValue = array_key_exists($field, $payload) ? $payload[$field] : null;
-            $value = $this->sanitizeCustomField($rawValue, $config['type']);
-            $hasStoredValue = $this->customerCustomFieldService->hasStoredValue($storedValues, $field);
-
-            if ($value === null) {
-                if ($respectRequired && !empty($config['required']) && !$hasStoredValue) {
-                    throw new PublicBookingException('Please complete all required custom fields.', 422, [$field => 'required']);
-                }
-                continue;
-            }
-
-            $values[$field] = $value;
-        }
-
-        return $values;
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function extractAppointmentCustomFieldClearFlags(array $payload, array $customConfig): array
-    {
-        $flags = [];
-
-        foreach ($customConfig as $field => $_config) {
-            $clearKey = 'clear__' . $field;
-            if (!array_key_exists($clearKey, $payload)) {
-                continue;
-            }
-
-            $rawValue = strtolower(trim((string) $payload[$clearKey]));
-            if (in_array($rawValue, ['1', 'true', 'yes', 'on'], true)) {
-                $flags[$field] = '1';
-            }
-        }
-
-        return $flags;
-    }
-
-    private function sanitizeString(?string $value, int $maxLength): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-        $trimmed = trim(strip_tags($value));
-        if ($trimmed === '') {
-            return null;
-        }
-        return substr($trimmed, 0, $maxLength);
-    }
-
-    private function sanitizeCustomField($value, string $type): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        if (is_array($value)) {
-            $value = implode(', ', array_map('strval', $value));
-        }
-
-        $value = trim((string) $value);
-        if ($value === '') {
-            return null;
-        }
-
-        if ($type === 'checkbox') {
-            return in_array(strtolower($value), ['1', 'true', 'yes', 'on'], true) ? '1' : '0';
-        }
-
-        return substr(strip_tags($value), 0, 255);
-    }
-
-    private function normalizePhone(?string $value, ?string $countryCode = null): ?string
-    {
-        return $this->phoneNumberService->normalize($value, $countryCode);
     }
 
     /**
@@ -1728,9 +962,9 @@ class PublicBookingService
             'location_contact' => $appointment['location_contact'] ?? null,
             'custom_fields' => $this->buildPublicCustomFieldPayload($customer['custom_fields'] ?? null),
             // Reschedule eligibility — computed server-side so the SPA can gate the form
-            'can_reschedule' => $this->canReschedule($appointment['start_at']),
+            'can_reschedule' => $this->policy->canReschedule($appointment['start_at']),
             // Cancellation eligibility — computed server-side so the SPA can gate cancel action
-            'can_cancel'     => $this->canCancel($appointment),
+            'can_cancel'     => $this->policy->canCancel($appointment),
             'delivery_mode'  => (string) ($appointment['delivery_mode'] ?? 'onsite'),
             'video_link'     => (string) ($appointment['video_link'] ?? ''),
         ];
@@ -1780,9 +1014,9 @@ class PublicBookingService
         helper('logging');
 
         $expectedEmail = strtolower(trim((string) ($appointment['customer_email'] ?? '')));
-        $expectedPhone = $this->normalizePhone($appointment['customer_phone'] ?? null, null);
+        $expectedPhone = $this->inputSanitizer->normalizePhone($appointment['customer_phone'] ?? null, null);
         $providedEmail = $email ? strtolower(trim($email)) : null;
-        $providedPhone = $this->normalizePhone($phone, $phoneCountryCode);
+        $providedPhone = $this->inputSanitizer->normalizePhone($phone, $phoneCountryCode);
 
         $tokenPrefix = substr((string) ($appointment['public_token'] ?? $appointment['hash'] ?? ''), 0, 8);
 
@@ -1817,155 +1051,6 @@ class PublicBookingService
         log_structured('info', 'public_booking.verification_success', [
             'token_prefix' => $tokenPrefix,
         ]);
-    }
-
-    /**
-     * Check whether an appointment's current start time is outside the reschedule policy window.
-     * Returns false when rescheduling is disabled OR the appointment is within the cutoff.
-     */
-    private function canReschedule(string $startAt): bool
-    {
-        $policy = $this->getReschedulePolicy();
-        return $this->isOutsidePolicyWindow($startAt, $policy);
-    }
-
-    private function assertRescheduleWindow(string $currentStart): void
-    {
-        $policy = $this->getReschedulePolicy();
-        if (!$policy['enabled']) {
-            throw new PublicBookingException('Rescheduling is not permitted for this booking.', 403);
-        }
-
-        // DB stores UTC — compare both datetimes in UTC
-        $start = new DateTimeImmutable($currentStart, new DateTimeZone('UTC'));
-        $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
-
-        if ($start <= $now) {
-            throw new PublicBookingException('This appointment can no longer be rescheduled.', 403);
-        }
-
-        $cutoff = $now->add(new DateInterval('PT' . $policy['hours'] . 'H'));
-        if ($cutoff > $start) {
-            throw new PublicBookingException('This appointment is too close to reschedule online.', 403);
-        }
-    }
-
-    /**
-     * Check whether the appointment can be cancelled online based on status and policy window.
-     */
-    private function canCancel(array $appointment): bool
-    {
-        $status = AppointmentStatus::normalize((string) ($appointment['status'] ?? ''));
-        if (!in_array($status, AppointmentStatus::UPCOMING, true)) {
-            return false;
-        }
-
-        $policy = $this->getCancelPolicy();
-        return $this->isOutsidePolicyWindow((string) ($appointment['start_at'] ?? ''), $policy);
-    }
-
-    private function assertCancellationWindow(array $appointment): void
-    {
-        $status = AppointmentStatus::normalize((string) ($appointment['status'] ?? ''));
-
-        if ($status === AppointmentStatus::CANCELLED) {
-            throw new PublicBookingException('This appointment has already been cancelled.', 409);
-        }
-
-        if (!in_array($status, AppointmentStatus::UPCOMING, true)) {
-            throw new PublicBookingException('This appointment can no longer be cancelled online.', 403);
-        }
-
-        $policy = $this->getCancelPolicy();
-        if (!$policy['enabled']) {
-            throw new PublicBookingException('Online cancellations are not permitted for this booking.', 403);
-        }
-
-        $start = new DateTimeImmutable((string) $appointment['start_at'], new DateTimeZone('UTC'));
-        $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
-
-        if ($start <= $now) {
-            throw new PublicBookingException('This appointment can no longer be cancelled online.', 403);
-        }
-
-        $cutoff = $now->add(new DateInterval('PT' . $policy['hours'] . 'H'));
-        if ($cutoff > $start) {
-            throw new PublicBookingException('This appointment is too close to cancel online.', 403);
-        }
-    }
-
-    private function getReschedulePolicy(): array
-    {
-        $settings = $this->settings->getByKeys(['business.reschedule']);
-        $value = $settings['business.reschedule'] ?? '24h';
-
-        return match ($value) {
-            'none' => ['enabled' => false, 'hours' => 0, 'label' => 'Disabled'],
-            '12h' => ['enabled' => true, 'hours' => 12, 'label' => '12 hours'],
-            default => ['enabled' => true, 'hours' => 24, 'label' => '24 hours'],
-        };
-    }
-
-    private function getCancelPolicy(): array
-    {
-        $settings = $this->settings->getByKeys(['business.cancel']);
-        $value = $settings['business.cancel'] ?? '24h';
-
-        return match ($value) {
-            'none' => ['enabled' => false, 'hours' => 0, 'label' => 'Disabled'],
-            '12h' => ['enabled' => true, 'hours' => 12, 'label' => '12 hours'],
-            default => ['enabled' => true, 'hours' => 24, 'label' => '24 hours'],
-        };
-    }
-
-    /**
-     * Returns the maximum number of days ahead a public customer may book.
-     * Defaults to 60 when the setting is absent (matches legacy hardcoded value).
-     */
-    public function getFutureLimitDays(): int
-    {
-        $settings = $this->settings->getByKeys(['business.future_limit']);
-        $value = (int) ($settings['business.future_limit'] ?? 60);
-        return $value > 0 ? $value : 60;
-    }
-
-    private function getLegalPolicyContext(): array
-    {
-        $legal = $this->settings->getByKeys([
-            'legal.cancellation_policy',
-            'legal.rescheduling_policy',
-            'legal.terms_url',
-            'legal.privacy_url',
-        ]);
-
-        return [
-            'cancellationPolicy' => (string) ($legal['legal.cancellation_policy'] ?? ''),
-            'reschedulingPolicy' => (string) ($legal['legal.rescheduling_policy'] ?? ''),
-            'termsUrl' => (string) ($legal['legal.terms_url'] ?? ''),
-            'privacyUrl' => (string) ($legal['legal.privacy_url'] ?? ''),
-            'legalPageUrl' => (string) base_url('booking/legal'),
-        ];
-    }
-
-    private function isOutsidePolicyWindow(string $startAt, array $policy): bool
-    {
-        if (!$policy['enabled']) {
-            return false;
-        }
-
-        if (trim($startAt) === '') {
-            return false;
-        }
-
-        $start = new DateTimeImmutable($startAt, new DateTimeZone('UTC'));
-        $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
-
-        if ($start <= $now) {
-            return false;
-        }
-
-        $cutoff = $now->add(new DateInterval('PT' . $policy['hours'] . 'H'));
-        return $cutoff <= $start;
     }
 
     private function generateToken(): string

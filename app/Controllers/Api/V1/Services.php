@@ -83,18 +83,8 @@ class Services extends BaseApiController
         
         // If filtering by provider, use JOIN query
         if ($providerId) {
-            $db = \Config\Database::connect();
-            $builder = $db->table('services s')
-                ->select('s.*')
-                ->join('providers_services ps', 'ps.service_id = s.id', 'inner')
-                ->where('ps.provider_id', (int) $providerId)
-                ->orderBy('s.' . $sortField, strtoupper($sortDir));
-            
-            $rows = $builder->get()->getResultArray();
-            $total = $db->table('services s')
-                ->join('providers_services ps', 'ps.service_id = s.id', 'inner')
-                ->where('ps.provider_id', (int) $providerId)
-                ->countAllResults();
+            $rows = $this->model->findForProvider((int) $providerId, $sortField, $sortDir);
+            $total = count($rows);
         } else {
             // Standard query without provider filter
             $rows = $this->model->orderBy($sortField, strtoupper($sortDir))->findAll($length, $offset);

@@ -196,7 +196,7 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         $this->expectException(PublicBookingException::class);
         $this->expectExceptionMessage('Please complete all required custom fields.');
 
-        $this->invokePrivateMethod($service, 'extractAppointmentCustomFieldValues', [
+        $this->collaborator($service, 'inputSanitizer')->extractAppointmentCustomFieldValues(...[
             ['custom_field_1' => ''],
             ['custom_field_1' => ['required' => true, 'type' => 'text']],
             true,
@@ -219,7 +219,7 @@ final class PublicBookingServiceTest extends CIUnitTestCase
             $this->createMock(AppointmentBookingService::class)
         );
 
-        $result = $this->invokePrivateMethod($service, 'extractAppointmentCustomFieldValues', [
+        $result = $this->collaborator($service, 'inputSanitizer')->extractAppointmentCustomFieldValues(...[
             ['custom_field_1' => ''],
             ['custom_field_1' => ['required' => true, 'type' => 'text']],
             true,
@@ -746,7 +746,7 @@ final class PublicBookingServiceTest extends CIUnitTestCase
             $this->createMock(SettingModel::class),
         );
 
-        $result = $this->invokePrivateMethod($service, 'findProviderBySlug', ['dual-role-doc']);
+        $result = $this->collaborator($service, 'directory')->findProviderBySlug('dual-role-doc');
 
         $this->assertNotNull($result);
         $this->assertSame('dual-role-doc', $result['slug']);
@@ -813,6 +813,17 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         $localization->method('formatTimeForDisplay')->willReturnCallback(static fn (string $time): string => substr($time, 0, 5));
 
         return $localization;
+    }
+
+    /**
+     * The facade's internal collaborator (directory / policy / inputSanitizer).
+     */
+    private function collaborator(PublicBookingService $service, string $property): object
+    {
+        $reflection = new \ReflectionProperty($service, $property);
+        $reflection->setAccessible(true);
+
+        return $reflection->getValue($service);
     }
 
     /**
