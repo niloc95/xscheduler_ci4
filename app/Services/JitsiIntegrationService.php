@@ -32,29 +32,9 @@ class JitsiIntegrationService
         return 'Jitsi';
     }
 
-    protected function integrationDecryptContext(): string
-    {
-        return 'JitsiIntegrationService';
-    }
-
-    private function getRow(int $businessId): ?array
-    {
-        try {
-            $model = new BusinessIntegrationModel();
-            $row   = $model
-                ->where('business_id', $businessId)
-                ->where('channel', self::CHANNEL)
-                ->first();
-            return is_array($row) ? $row : null;
-        } catch (\Throwable $e) {
-            log_message('debug', 'JitsiIntegrationService::getRow - ' . $e->getMessage());
-            return null;
-        }
-    }
-
     public function getPublicIntegration(int $businessId): array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
 
         if (!$row) {
             return [
@@ -101,7 +81,7 @@ class JitsiIntegrationService
 
         // Preserve existing API key if field left blank
         if ($apiKey === '') {
-            $existing = $this->getRow($businessId);
+            $existing = $this->getIntegrationRow($businessId);
             if ($existing) {
                 $existingConfig = $this->decryptConfig($existing['encrypted_config'] ?? null);
                 $apiKey         = (string) ($existingConfig['api_key'] ?? '');
@@ -119,7 +99,7 @@ class JitsiIntegrationService
         }
 
         $model    = new BusinessIntegrationModel();
-        $existing = $this->getRow($businessId);
+        $existing = $this->getIntegrationRow($businessId);
         $payload  = [
             'business_id'      => $businessId,
             'channel'          => self::CHANNEL,
@@ -139,7 +119,7 @@ class JitsiIntegrationService
 
     public function testConnection(int $businessId): array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
         if (!$row) {
             return ['ok' => false, 'error' => 'Jitsi is not configured.'];
         }
@@ -170,7 +150,7 @@ class JitsiIntegrationService
 
     public function disconnect(int $businessId): array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
         if (!$row) {
             return ['ok' => true];
         }
@@ -184,7 +164,7 @@ class JitsiIntegrationService
      */
     public function generateMeetingLink(int $businessId, array $appointment): array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
 
         $config    = $row ? $this->decryptConfig($row['encrypted_config'] ?? null) : [];
         $serverUrl = rtrim((string) ($config['server_url'] ?? self::DEFAULT_SERVER), '/');

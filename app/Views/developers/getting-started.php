@@ -5,36 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex">
     <title>Getting started · WebScheduler API</title>
-    <style {csp-style-nonce}>
-        :root { color-scheme: light dark; }
-        body {
-            margin: 0; padding: 0;
-            font-family: Inter, system-ui, -apple-system, sans-serif;
-            line-height: 1.6; color: #0f172a; background: #f8fafc;
-        }
-        .wrap { max-width: 760px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
-        h1 { font-size: 1.9rem; margin: 0 0 0.25rem; }
-        h2 { font-size: 1.25rem; margin: 2rem 0 0.5rem; }
-        p, li { color: #334155; }
-        a { color: #2563eb; }
-        code { background: #e2e8f0; padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.9em; }
-        pre {
-            background: #0f172a; color: #e2e8f0; padding: 1rem 1.25rem;
-            border-radius: 8px; overflow-x: auto; font-size: 0.85rem;
-        }
-        pre code { background: none; padding: 0; color: inherit; }
-        table { border-collapse: collapse; width: 100%; margin: 0.5rem 0; }
-        th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid #cbd5e1; font-size: 0.9rem; }
-        .lead { font-size: 1.05rem; color: #475569; }
-        .back { display: inline-block; margin-bottom: 1.5rem; font-size: 0.9rem; }
-        @media (prefers-color-scheme: dark) {
-            body { color: #e2e8f0; background: #0b1120; }
-            p, li { color: #cbd5e1; }
-            code { background: #1e293b; color: #e2e8f0; }
-            th, td { border-bottom-color: #1e293b; }
-            .lead { color: #94a3b8; }
-        }
-    </style>
+    <?php foreach (vite_css('resources/scss/pages/developers-guide.scss') as $css): ?>
+    <link rel="stylesheet" href="<?= $css ?>">
+    <?php endforeach; ?>
 </head>
 <body>
     <div class="wrap">

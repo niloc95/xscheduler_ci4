@@ -263,32 +263,3 @@ if ($oldActive !== null) {
     </div>
 </div>
 
-<script {csp-script-nonce}>
-(function () {
-    const toggle = document.getElementById('paymentEnabledToggle');
-    const fields = document.getElementById('paymentFields');
-    if (!toggle || !fields) return;
-    toggle.addEventListener('change', function () {
-        fields.classList.toggle('hidden', !this.checked);
-    });
-})();
-</script>
-
-<?php if ($slugLocked && $canUnlockSlug): ?>
-<script {csp-script-nonce}>
-    (function () {
-        const unlock = document.querySelector('[data-slug-unlock]');
-        const slugInput = document.querySelector('input[name="slug"]');
-        if (!unlock || !slugInput) {
-            return;
-        }
-
-        const refresh = function () {
-            slugInput.readOnly = !unlock.checked;
-        };
-
-        unlock.addEventListener('change', refresh);
-        refresh();
-    })();
-</script>
-<?php endif; ?>

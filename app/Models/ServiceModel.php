@@ -326,4 +326,21 @@ class ServiceModel extends BaseModel
             'repeat_booking_rate'     => $repeatRate,
         ];
     }
+
+    /**
+     * All services linked to a provider, ordered by a whitelisted column.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function findForProvider(int $providerId, string $sortField = 'name', string $sortDir = 'ASC'): array
+    {
+        return $this->db->table($this->db->prefixTable('services') . ' s')
+            ->select('s.*')
+            ->join($this->db->prefixTable('providers_services') . ' ps', 'ps.service_id = s.id', 'inner')
+            ->where('ps.provider_id', $providerId)
+            ->orderBy('s.' . $sortField, strtoupper($sortDir) === 'DESC' ? 'DESC' : 'ASC')
+            ->get()
+            ->getResultArray();
+    }
+
 }

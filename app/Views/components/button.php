@@ -20,6 +20,9 @@ $type = $type ?? 'button';
 $icon = $icon ?? null;
 $class = $class ?? '';
 $attrs = $attrs ?? [];
+if (!empty($id) && !isset($attrs['id'])) {
+    $attrs['id'] = $id; // shorthand: 'id' => 'foo' == 'attrs' => ['id' => 'foo']
+}
 $tag = $tag ?? 'button'; // button|a
 $href = $href ?? '#';
 $disabled = (bool) ($disabled ?? false);

@@ -20,7 +20,6 @@ phpunit.xml.dist
 vite.config.js
 postcss.config.js
 tailwind.config.js
-composer-setup.php
 
 # Build artifacts
 build/logs/

@@ -8,7 +8,14 @@ trait HandlesNotificationIntegrations
 {
     abstract protected function integrationEncryptionLabel(): string;
 
-    abstract protected function integrationDecryptContext(): string;
+    /**
+     * Context label passed to notification_decrypt_config() for logging.
+     * Defaults to the using class's short name.
+     */
+    protected function integrationDecryptContext(): string
+    {
+        return substr((string) strrchr('\\' . static::class, '\\'), 1);
+    }
 
     private function getIntegrationRow(int $businessId): ?array
     {

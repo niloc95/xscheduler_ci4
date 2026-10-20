@@ -27,29 +27,9 @@ class StripeIntegrationService
         return 'Stripe';
     }
 
-    protected function integrationDecryptContext(): string
-    {
-        return 'StripeIntegrationService';
-    }
-
-    private function getRow(int $businessId): ?array
-    {
-        try {
-            $model = new BusinessIntegrationModel();
-            $row = $model
-                ->where('business_id', $businessId)
-                ->where('channel', self::CHANNEL)
-                ->first();
-            return is_array($row) ? $row : null;
-        } catch (\Throwable $e) {
-            log_message('debug', 'StripeIntegrationService::getRow - ' . $e->getMessage());
-            return null;
-        }
-    }
-
     public function getPublicIntegration(int $businessId): array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
 
         if (!$row) {
             return [
@@ -95,7 +75,7 @@ class StripeIntegrationService
 
         // Preserve existing secret key if omitted
         if ($secretKey === '') {
-            $existing = $this->getRow($businessId);
+            $existing = $this->getIntegrationRow($businessId);
             if ($existing) {
                 $existingConfig = $this->decryptConfig($existing['encrypted_config'] ?? null);
                 $secretKey      = (string) ($existingConfig['secret_key'] ?? '');
@@ -117,7 +97,7 @@ class StripeIntegrationService
 
         // Preserve existing webhook secret / legacy currency if omitted
         if ($webhookSecret === '' || $currency === '') {
-            $existing = $this->getRow($businessId);
+            $existing = $this->getIntegrationRow($businessId);
             if ($existing) {
                 $existingConfig = $this->decryptConfig($existing['encrypted_config'] ?? null);
                 if ($webhookSecret === '') {
@@ -141,7 +121,7 @@ class StripeIntegrationService
         }
 
         $model   = new BusinessIntegrationModel();
-        $existing = $this->getRow($businessId);
+        $existing = $this->getIntegrationRow($businessId);
         $payload = [
             'business_id'      => $businessId,
             'channel'          => self::CHANNEL,
@@ -161,7 +141,7 @@ class StripeIntegrationService
 
     public function testConnection(int $businessId): array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
         if (!$row) {
             return ['ok' => false, 'error' => 'Stripe is not configured.'];
         }
@@ -197,7 +177,7 @@ class StripeIntegrationService
      */
     public function getDecryptedConfig(int $businessId): ?array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
         if (!$row) {
             return null;
         }
@@ -206,7 +186,7 @@ class StripeIntegrationService
 
     public function disconnect(int $businessId): array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
         if (!$row) {
             return ['ok' => true];
         }

@@ -22,6 +22,8 @@ Defined in `vite.config.js` `rollupOptions.input`:
 | `unified-sidebar` | `resources/js/unified-sidebar.js` |
 | `charts` | `resources/js/charts.js` |
 | `setup` | `resources/js/setup.js` |
+| `developers` | `resources/js/developers.js` (imports `scss/pages/developers.scss`) |
+| `developers-guide` | `resources/scss/pages/developers-guide.scss` (standalone `/developers/getting-started`) |
 
 `resources/js/material-web.js` was removed — the `@material/web` bundle was unused (zero `<md-*>` elements in production views).
 

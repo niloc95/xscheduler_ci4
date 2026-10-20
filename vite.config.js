@@ -37,6 +37,7 @@ export default defineConfig({
         'public-booking': path.resolve(process.cwd(), 'resources/js/public-booking.js'),
         // Standalone developer API docs page (Redoc). Self-hosted, no CDN.
         developers: path.resolve(process.cwd(), 'resources/js/developers.js'),
+        'developers-guide': path.resolve(process.cwd(), 'resources/scss/pages/developers-guide.scss'),
       },
       output: {
         // Hash entry files too so production clients/CDNs do not serve stale JS.

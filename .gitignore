@@ -326,7 +326,11 @@ db.production.php
 # Application Specific
 #-------------------------
 # Setup completion flag - should never be committed as it's environment-specific
+writable/setup_complete.flag
 writable/setup_completed.flag
+
+# PHPUnit cache
+build/.phpunit.cache/
 
 # User uploads (adjust paths as needed)
 public/uploads/*

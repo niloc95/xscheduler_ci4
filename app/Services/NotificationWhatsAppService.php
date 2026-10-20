@@ -113,11 +113,6 @@ class NotificationWhatsAppService
         return 'WhatsApp';
     }
 
-    protected function integrationDecryptContext(): string
-    {
-        return 'NotificationWhatsAppService';
-    }
-
     /**
      * Returns a safe-to-render subset of the stored WhatsApp integration.
      * Secrets are never returned. decrypt_error is set if key mismatch.

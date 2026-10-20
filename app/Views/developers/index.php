@@ -5,20 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex">
     <title>WebScheduler API Reference</title>
-    <style>
-        html, body { margin: 0; padding: 0; height: 100%; }
-        #dev-topbar {
-            display: flex; align-items: center; justify-content: space-between;
-            gap: 1rem; padding: 0.75rem 1.25rem;
-            font-family: Inter, system-ui, -apple-system, sans-serif;
-            background: #0f172a; color: #f8fafc;
-            border-bottom: 1px solid #1e293b;
-        }
-        #dev-topbar a { color: #93c5fd; text-decoration: none; font-size: 0.9rem; }
-        #dev-topbar a:hover { text-decoration: underline; }
-        #dev-topbar .brand { font-weight: 600; font-size: 1rem; color: #f8fafc; }
-        #redoc-container { display: block; }
-    </style>
+    <?php foreach (vite_css('resources/js/developers.js') as $css): ?>
+    <link rel="stylesheet" href="<?= $css ?>">
+    <?php endforeach; ?>
 </head>
 <body>
     <div id="dev-topbar">

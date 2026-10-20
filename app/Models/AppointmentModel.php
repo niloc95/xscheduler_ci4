@@ -56,6 +56,7 @@
 
 namespace App\Models;
 
+use App\Services\SchemaInspector;
 use App\Models\BaseModel;
 use App\Services\Appointment\AppointmentStatus;
 
@@ -116,41 +117,7 @@ class AppointmentModel extends BaseModel
      */
     private function hasAppointmentsColumn(string $column): bool
     {
-        static $cache = [];
-
-        if (array_key_exists($column, $cache)) {
-            return $cache[$column];
-        }
-
-        $prefix = method_exists($this->db, 'getPrefix') ? (string) $this->db->getPrefix() : '';
-        $unprefixedTable = $prefix !== '' ? preg_replace('/^' . preg_quote($prefix, '/') . '/', '', $this->table) : $this->table;
-
-        $tableCandidates = array_values(array_unique([
-            $this->table,
-            method_exists($this->db, 'prefixTable') ? $this->db->prefixTable($unprefixedTable) : $this->table,
-            $unprefixedTable,
-        ]));
-
-        foreach ($tableCandidates as $candidate) {
-            if (!is_string($candidate) || $candidate === '') {
-                continue;
-            }
-
-            try {
-                foreach ($this->db->getFieldData($candidate) as $field) {
-                    if ((string) ($field->name ?? '') === $column) {
-                        $cache[$column] = true;
-                        return true;
-                    }
-                }
-            } catch (\Throwable $e) {
-                // Try the next candidate table name.
-            }
-        }
-
-        $cache[$column] = false;
-
-        return false;
+        return SchemaInspector::hasColumn($this->table, $column, $this->db);
     }
 
     /**
@@ -1361,5 +1328,61 @@ class AppointmentModel extends BaseModel
         
         return ['labels' => $labels, 'data' => $data];
     }
+
+    /**
+     * One page of a provider's appointments within a local-date range.
+     *
+     * Dates are business-local (Y-m-d) and converted to UTC for the query, since
+     * start_at/end_at are stored in UTC.
+     *
+     * @param array{status?: ?string, service_id?: ?int, future_only?: bool} $filters
+     * @return array{items: list<array<string, mixed>>, total: int}
+     */
+    public function getProviderAppointmentsPage(int $providerId, string $startDate, string $endDate, array $filters, int $limit, int $offset): array
+    {
+        $appointments = $this->db->prefixTable('appointments');
+        $customers = $this->db->prefixTable('customers');
+        $services = $this->db->prefixTable('services');
+
+        $builder = $this->db->table($appointments . ' a')
+            ->select('a.*,
+                      CONCAT(c.first_name, " ", COALESCE(c.last_name, "")) as customer_name,
+                      c.email as customer_email,
+                      c.phone as customer_phone,
+                      s.name as service_name,
+                      s.duration_min as service_duration,
+                      s.price as service_price')
+            ->join($customers . ' c', 'c.id = a.customer_id', 'left')
+            ->join($services . ' s', 's.id = a.service_id', 'left')
+            ->where('a.provider_id', $providerId);
+
+        $localTz = new \DateTimeZone(\App\Services\TimezoneService::businessTimezone());
+        $utcTz = new \DateTimeZone('UTC');
+        $toUtc = static fn (string $local): string => (new \DateTime($local, $localTz))->setTimezone($utcTz)->format('Y-m-d H:i:s');
+
+        $builder->where('a.start_at >=', $toUtc($startDate . ' 00:00:00'))
+            ->where('a.start_at <=', $toUtc($endDate . ' 23:59:59'))
+            ->orderBy('a.start_at', 'ASC');
+
+        if (!empty($filters['future_only'])) {
+            $builder->where('a.start_at >=', $toUtc('today'));
+        }
+
+        if (!empty($filters['status'])) {
+            $builder->where('a.status', $filters['status']);
+        }
+
+        if (!empty($filters['service_id'])) {
+            $builder->where('a.service_id', (int) $filters['service_id']);
+        }
+
+        $total = (clone $builder)->countAllResults(false);
+
+        return [
+            'items' => $builder->limit($limit, $offset)->get()->getResultArray(),
+            'total' => (int) $total,
+        ];
+    }
+
 }
 

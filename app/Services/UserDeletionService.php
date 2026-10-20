@@ -153,11 +153,7 @@ class UserDeletionService
         $adminCountBuilder = $this->userModel->builder();
         $adminCountBuilder->where('role', 'admin');
 
-        if ($this->hasUsersColumn('is_active')) {
-            $adminCountBuilder->where('is_active', 1);
-        } elseif ($this->hasUsersColumn('status')) {
-            $adminCountBuilder->where('status', 'active');
-        }
+        UserModel::applyActiveFilter($adminCountBuilder);
 
         $impact = [
             'role' => $role,
@@ -324,35 +320,13 @@ class UserDeletionService
         }
     }
 
-    private function hasUsersColumn(string $column): bool
-    {
-        $db = $this->userModel->db;
-
-        if (!method_exists($db, 'fieldExists')) {
-            return true;
-        }
-
-        return $db->fieldExists($column, $db->prefixTable('users')) || $db->fieldExists($column, 'users');
-    }
-
     private function resolveAppointmentStartColumn(): string
     {
-        if ($this->hasAppointmentsColumn('start_at')) {
+        if (SchemaInspector::hasColumn('xs_appointments', 'start_at', $this->userModel->db)) {
             return 'start_at';
         }
 
         return 'start_time';
-    }
-
-    private function hasAppointmentsColumn(string $column): bool
-    {
-        $db = $this->userModel->db;
-
-        if (!method_exists($db, 'fieldExists')) {
-            return true;
-        }
-
-        return $db->fieldExists($column, $db->prefixTable('appointments')) || $db->fieldExists($column, 'appointments');
     }
 
     private function tableExists(string $table): bool

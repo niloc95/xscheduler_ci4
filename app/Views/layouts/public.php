@@ -27,7 +27,7 @@
          Sets .dark class, colorScheme, and (for dark) background-color on <html> to cover
          the viewport before the CSS file loads. xs-no-transition prevents transition animation
          when dark:bg-gray-900 first applies to <body>. -->
-    <script>!function(){var t=localStorage.getItem('xs-theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.toggle('dark',t==='dark');document.documentElement.style.colorScheme=t;if(t==='dark')document.documentElement.style.backgroundColor='#111827';document.documentElement.classList.add('xs-no-transition')}();</script>
+    <script {csp-script-nonce}>!function(){var t=localStorage.getItem('xs-theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.toggle('dark',t==='dark');document.documentElement.style.colorScheme=t;if(t==='dark')document.documentElement.style.backgroundColor='#111827';document.documentElement.classList.add('xs-no-transition')}();</script>
     
     <!-- Stylesheets -->
     <?php foreach (vite_css('resources/scss/app-consolidated.scss') as $css): ?>

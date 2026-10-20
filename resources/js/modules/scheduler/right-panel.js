@@ -215,7 +215,7 @@ export class RightPanel {
                         </div>
                     </div>
                     <div class="provider-load-bar-container">
-                        <div class="provider-load-bar ${loadBarClass}" style="width: ${loadPercentage}%;"></div>
+                        <div class="provider-load-bar ${loadBarClass}" data-width-percent="${loadPercentage}"></div>
                     </div>
                 </div>
             `;

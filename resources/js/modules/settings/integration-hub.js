@@ -1,14 +1,7 @@
 import { apiRequest } from '../../core/api.js';
+import { showToast } from '../../utils/toast.js';
 
 const API_BASE = '/api/v1/integrations';
-
-function showToast(type, title, message) {
-    if (window.XSNotify?.toast) {
-        window.XSNotify.toast({ type, title, message, autoClose: type !== 'error', duration: type !== 'error' ? 4000 : undefined });
-        return;
-    }
-    console.error(message);
-}
 
 function openModal(id) {
     const el = document.getElementById(id);

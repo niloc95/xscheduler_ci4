@@ -103,22 +103,4 @@ if ($session->getFlashdata('message')) {
     </div>
     <?php endif; ?>
 </div>
-
-<script {csp-script-nonce}>
-// Auto-dismiss flash messages after 8 seconds
-document.querySelectorAll('[data-flash-message]').forEach(el => {
-    setTimeout(() => {
-        el.classList.add('xs-fade-out');
-        setTimeout(() => el.remove(), 300);
-    }, 8000);
-});
-// Manual dismiss via data-dismiss-flash button
-document.querySelectorAll('[data-dismiss-flash]').forEach(btn => {
-    btn.addEventListener('click', () => btn.parentElement?.remove());
-});
-// Scroll to top so success/error flash messages are visible on form pages
-if (document.querySelector('[data-flash-message]')) {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-</script>
 <?php endif; ?>

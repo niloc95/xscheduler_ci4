@@ -219,24 +219,7 @@ class NotificationCenterService
         // Resolve from session/user context only — GET params are intentionally
         // excluded here so that stale ?business_id= query strings cannot inject
         // a foreign business context into the Notifications surface.
-        $sessionUser = session()->get('user');
-        $sessionUser = is_array($sessionUser) ? $sessionUser : [];
-
-        $candidates = [
-            session()->get('business_id'),
-            session()->get('active_business_id'),
-            $sessionUser['business_id'] ?? null,
-            $sessionUser['active_business_id'] ?? null,
-            $sessionUser['businessId'] ?? null,
-        ];
-
-        foreach ($candidates as $candidate) {
-            if (is_numeric($candidate) && (int) $candidate > 0) {
-                return (int) $candidate;
-            }
-        }
-
-        return \App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT;
+        return session_business_id() ?? \App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT;
     }
 
     /**

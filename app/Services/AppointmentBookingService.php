@@ -154,7 +154,7 @@ class AppointmentBookingService
         helper('logging');
 
         $channel = (string) ($data['booking_channel'] ?? 'internal');
-        $actorUserId = $this->resolveActorUserId();
+        $actorUserId = current_actor_user_id();
 
         log_structured('info', 'appointment.create_attempt', [
             'booking_channel' => $channel,
@@ -445,7 +445,7 @@ class AppointmentBookingService
             log_message('error', '[AppointmentBookingService] Trace: ' . $e->getTraceAsString());
             log_structured('error', 'appointment.create_exception', [
                 'booking_channel' => (string) ($data['booking_channel'] ?? 'internal'),
-                'actor_user_id' => $this->resolveActorUserId(),
+                'actor_user_id' => current_actor_user_id(),
                 'exception_message' => $e->getMessage(),
                 'exception_class' => get_class($e),
             ]);
@@ -474,7 +474,7 @@ class AppointmentBookingService
         helper('logging');
 
         $channel = (string) ($data['booking_channel'] ?? 'internal');
-        $actorUserId = $this->resolveActorUserId();
+        $actorUserId = current_actor_user_id();
 
         log_structured('info', 'appointment.update_attempt', [
             'booking_channel' => $channel,
@@ -704,7 +704,7 @@ class AppointmentBookingService
             log_message('error', '[AppointmentBookingService] Update exception: ' . $e->getMessage());
             log_structured('error', 'appointment.update_exception', [
                 'booking_channel' => (string) ($data['booking_channel'] ?? 'internal'),
-                'actor_user_id' => $this->resolveActorUserId(),
+                'actor_user_id' => current_actor_user_id(),
                 'appointment_id' => $appointmentId,
                 'exception_message' => $e->getMessage(),
                 'exception_class' => get_class($e),
@@ -713,25 +713,9 @@ class AppointmentBookingService
         }
     }
 
-    private function resolveActorUserId(): ?int
-    {
-        try {
-            if (function_exists('session')) {
-                $userId = session()->get('user_id');
-                if (is_numeric($userId) && (int) $userId > 0) {
-                    return (int) $userId;
-                }
-            }
-        } catch (\Throwable $e) {
-            // Session service may be unavailable in CLI contexts.
-        }
-
-        return null;
-    }
-
     private function writeAppointmentAudit(string $action, int $appointmentId, ?array $oldValue, ?array $newValue): void
     {
-        $actorUserId = $this->resolveActorUserId();
+        $actorUserId = current_actor_user_id();
         if ($actorUserId === null) {
             return;
         }

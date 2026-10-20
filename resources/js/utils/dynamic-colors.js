@@ -23,6 +23,7 @@ const DYNAMIC_COLOR_SELECTOR = [
     '[data-border-left-color]',
     '[data-provider-color]',
     '[data-pill-color]',
+    '[data-width-percent]',
 ].join(',');
 
 /**
@@ -35,6 +36,7 @@ const DYNAMIC_COLOR_SELECTOR = [
  * - data-border-left-color
  * - data-provider-color (maps to --provider-color)
  * - data-pill-color (maps to --pill-color)
+ * - data-width-percent (0–100, maps to width: N%)
  */
 function applyDynamicColorsToElement(element) {
     if (!element || element.nodeType !== Node.ELEMENT_NODE) {
@@ -47,6 +49,7 @@ function applyDynamicColorsToElement(element) {
     const borderLeftColor = element.getAttribute('data-border-left-color');
     const providerColor = element.getAttribute('data-provider-color');
     const pillColor = element.getAttribute('data-pill-color');
+    const widthPercent = element.getAttribute('data-width-percent');
 
     if (backgroundColor) {
         element.style.backgroundColor = backgroundColor;
@@ -65,6 +68,10 @@ function applyDynamicColorsToElement(element) {
     }
     if (pillColor) {
         element.style.setProperty('--pill-color', pillColor);
+    }
+    if (widthPercent !== null && widthPercent !== '') {
+        const pct = Math.min(100, Math.max(0, Number(widthPercent) || 0));
+        element.style.width = `${pct}%`;
     }
 }
 

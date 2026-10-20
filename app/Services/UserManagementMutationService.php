@@ -143,7 +143,7 @@ class UserManagementMutationService
                 ? $payload['color']
                 : $this->userModel->getAvailableProviderColor();
             $userData = array_merge($userData, $this->extractProviderProfilePayload($payload));
-            $userData['slug'] = $this->resolveProviderSlug($payload['slug'] ?? null, $payload['name'] ?? null, null);
+            $userData['slug'] = (new SlugService())->resolve('users', $payload['slug'] ?? null, $payload['name'] ?? null, 'provider', null);
             log_message('info', 'Assigned color ' . $userData['color'] . ' to new provider');
 
             [$scheduleClean, $scheduleErrors] = $this->scheduleValidation->validateProviderSchedule($scheduleInput);
@@ -364,7 +364,7 @@ class UserManagementMutationService
             $existingSlug = trim((string) ($existingUser['slug'] ?? ''));
             $requestedSlug = $payload['slug'] ?? null;
             if ($existingSlug === '') {
-                $updateData['slug'] = $this->resolveProviderSlug($requestedSlug, $payload['name'] ?? ($existingUser['name'] ?? null), $userId);
+                $updateData['slug'] = (new SlugService())->resolve('users', $requestedSlug, $payload['name'] ?? ($existingUser['name'] ?? null), 'provider', $userId);
             } elseif ($requestedSlug !== null && trim((string) $requestedSlug) !== $existingSlug) {
                 // Slug is locked once set; ignore attempts to rotate it through edits.
                 $updateData['slug'] = $existingSlug;
@@ -698,22 +698,7 @@ class UserManagementMutationService
      */
     private function hasNotifyOnAppointmentsColumn(): bool
     {
-        static $exists = null;
-
-        if ($exists !== null) {
-            return $exists;
-        }
-
-        try {
-            $db = \Config\Database::connect();
-            $exists = method_exists($db, 'fieldExists')
-                ? (bool) $db->fieldExists('notify_on_appointments', 'xs_users')
-                : true;
-        } catch (\Throwable $e) {
-            $exists = false;
-        }
-
-        return $exists;
+        return SchemaInspector::hasColumn('xs_users', 'notify_on_appointments');
     }
 
     /**
@@ -735,54 +720,7 @@ class UserManagementMutationService
         return $out;
     }
 
-    /**
-     * Generate a unique provider slug. If an explicit slug is provided, it wins.
-     */
-    private function resolveProviderSlug($requestedSlug, $name, ?int $excludeUserId): string
-    {
-        $base = trim((string) $requestedSlug);
-        if ($base === '') {
-            $base = trim((string) $name);
-        }
 
-        $slug = $this->slugify($base);
-        if ($slug === '') {
-            $slug = 'provider';
-        }
-
-        return $this->ensureUniqueProviderSlug($slug, $excludeUserId);
-    }
-
-    private function slugify(string $value): string
-    {
-        $value = strtolower(trim($value));
-        $value = preg_replace('/[^a-z0-9]+/', '-', $value) ?? '';
-        return trim($value, '-');
-    }
-
-    private function ensureUniqueProviderSlug(string $baseSlug, ?int $excludeUserId): string
-    {
-        $db = \Config\Database::connect();
-        $table = $db->prefixTable('users');
-
-        $candidate = $baseSlug;
-        $suffix = 2;
-
-        while (true) {
-            $builder = $db->table($table)->select('id')->where('slug', $candidate);
-            if ($excludeUserId !== null) {
-                $builder->where('id !=', $excludeUserId);
-            }
-
-            $exists = (bool) $builder->get()->getRowArray();
-            if (!$exists) {
-                return $candidate;
-            }
-
-            $candidate = $baseSlug . '-' . $suffix;
-            $suffix++;
-        }
-    }
 
     /**
      * Validates and stages provider profile image changes.
@@ -885,7 +823,7 @@ class UserManagementMutationService
 
             $absolute = rtrim($targetDir, '/') . '/' . $safeName;
             $mimeForResize = $realMime !== '' ? $realMime : $clientMime;
-            $this->resizeImageToMaxDimension($absolute, $mimeForResize, 600);
+            (new ImageResizeService())->constrainToMaxDimension($absolute, $mimeForResize, 600);
 
             $relative = 'assets/profile/' . $safeName;
             $updateData['profile_image'] = $relative;
@@ -928,82 +866,4 @@ class UserManagementMutationService
         return null;
     }
 
-    private function resizeImageToMaxDimension(string $path, string $mime, int $max): void
-    {
-        $source = null;
-        switch ($mime) {
-            case 'image/jpeg':
-                $source = @imagecreatefromjpeg($path);
-                break;
-            case 'image/png':
-            case 'image/x-png':
-                $source = @imagecreatefrompng($path);
-                break;
-            case 'image/gif':
-                $source = @imagecreatefromgif($path);
-                break;
-            case 'image/webp':
-                if (function_exists('imagecreatefromwebp')) {
-                    $source = @imagecreatefromwebp($path);
-                }
-                break;
-        }
-
-        if (!$source) {
-            return;
-        }
-
-        $sourceWidth = imagesx($source);
-        $sourceHeight = imagesy($source);
-        if ($sourceWidth <= 0 || $sourceHeight <= 0) {
-            imagedestroy($source);
-            return;
-        }
-
-        if ($sourceWidth <= $max && $sourceHeight <= $max) {
-            imagedestroy($source);
-            return;
-        }
-
-        if ($sourceWidth >= $sourceHeight) {
-            $newWidth = $max;
-            $newHeight = (int) round($sourceHeight * ($max / $sourceWidth));
-        } else {
-            $newHeight = $max;
-            $newWidth = (int) round($sourceWidth * ($max / $sourceHeight));
-        }
-
-        $newWidth = max(1, $newWidth);
-        $newHeight = max(1, $newHeight);
-
-        $dest = imagecreatetruecolor($newWidth, $newHeight);
-        if (in_array($mime, ['image/png', 'image/x-png', 'image/gif'], true)) {
-            imagecolortransparent($dest, imagecolorallocatealpha($dest, 0, 0, 0, 127));
-            imagealphablending($dest, false);
-            imagesavealpha($dest, true);
-        }
-
-        imagecopyresampled($dest, $source, 0, 0, 0, 0, $newWidth, $newHeight, $sourceWidth, $sourceHeight);
-
-        switch ($mime) {
-            case 'image/jpeg':
-                @imagejpeg($dest, $path, 85);
-                break;
-            case 'image/png':
-            case 'image/x-png':
-                @imagepng($dest, $path, 6);
-                break;
-            case 'image/gif':
-                @imagegif($dest, $path);
-                break;
-            case 'image/webp':
-                if (function_exists('imagewebp')) {
-                    @imagewebp($dest, $path, 85);
-                }
-                break;
-        }
-
-        imagedestroy($source);
-        imagedestroy($dest);
-    }
 }

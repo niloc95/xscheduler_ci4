@@ -527,7 +527,7 @@ class BookingController extends BaseController
     {
         $gateway = $this->request->getGet('gateway') ?? '';
         return view('public-site/payment-return', [
-            'gateway' => esc($gateway),
+            'gateway' => (string) $gateway,
         ]);
     }
 
@@ -540,7 +540,7 @@ class BookingController extends BaseController
     {
         $gateway = $this->request->getGet('gateway') ?? '';
         return view('public-site/payment-cancel', [
-            'gateway' => esc($gateway),
+            'gateway' => (string) $gateway,
         ]);
     }
 

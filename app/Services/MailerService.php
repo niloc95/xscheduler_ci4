@@ -91,11 +91,6 @@ class MailerService
         return 'SMTP';
     }
 
-    protected function integrationDecryptContext(): string
-    {
-        return 'MailerService';
-    }
-
     // -------------------------------------------------------------------------
     // Public API
     // -------------------------------------------------------------------------

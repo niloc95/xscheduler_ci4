@@ -138,7 +138,4 @@
 
 <?= $this->endSection() ?>
 
-<?= $this->section('scripts') ?>
-    <?= $this->include('services/_category_modal_script') ?>
-<?= $this->endSection() ?>
 

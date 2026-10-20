@@ -33,6 +33,7 @@
 
 namespace App\Services\Appointment;
 
+use App\Services\SchemaInspector;
 use App\Models\AppointmentModel;
 use App\Models\ProviderStaffModel;
 use App\Services\LocalizationSettingsService;
@@ -46,9 +47,6 @@ class AppointmentQueryService
     private ProviderStaffModel $providerStaffModel;
     private LocalizationSettingsService $localizationService;
     private BaseConnection $db;
-
-    /** @var array<string, bool> */
-    private array $columnExistsCache = [];
 
     public function __construct(
         ?AppointmentModel $model = null,
@@ -266,57 +264,7 @@ class AppointmentQueryService
 
     private function hasColumn(string $table, string $column): bool
     {
-        $key = $table . '.' . $column;
-
-        if (array_key_exists($key, $this->columnExistsCache)) {
-            return $this->columnExistsCache[$key];
-        }
-
-        $exists = false;
-
-        try {
-            if (!method_exists($this->db, 'getFieldData')) {
-                $this->columnExistsCache[$key] = true;
-                return true;
-            }
-
-            $prefix = method_exists($this->db, 'getPrefix') ? (string) $this->db->getPrefix() : '';
-
-            $candidates = [];
-            if (method_exists($this->db, 'prefixTable')) {
-                $candidates[] = (string) $this->db->prefixTable($table);
-            }
-            $candidates[] = $table;
-            if ($prefix !== '') {
-                if (str_starts_with($table, $prefix)) {
-                    $candidates[] = substr($table, strlen($prefix));
-                } else {
-                    $candidates[] = $prefix . $table;
-                }
-            }
-
-            $candidates = array_values(array_unique(array_filter($candidates)));
-            foreach ($candidates as $candidate) {
-                try {
-                    $fields = $this->db->getFieldData($candidate);
-                    foreach ($fields as $field) {
-                        $fieldName = (string) ($field->name ?? '');
-                        if ($fieldName === $column) {
-                            $exists = true;
-                            break 2;
-                        }
-                    }
-                } catch (\Throwable $inner) {
-                    // Try the next candidate table name.
-                }
-            }
-        } catch (\Throwable $e) {
-            $exists = false;
-        }
-
-        $this->columnExistsCache[$key] = $exists;
-
-        return $exists;
+        return SchemaInspector::hasColumn($table, $column, $this->db);
     }
 
     /**

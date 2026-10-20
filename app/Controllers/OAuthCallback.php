@@ -66,22 +66,8 @@ class OAuthCallback extends BaseController
 
     private function resolveBusinessId(): int
     {
-        $sessionUser = session()->get('user');
-        $sessionUser = is_array($sessionUser) ? $sessionUser : [];
+        helper('permissions');
 
-        $candidates = [
-            session()->get('business_id'),
-            session()->get('active_business_id'),
-            $sessionUser['business_id'] ?? null,
-            $sessionUser['active_business_id'] ?? null,
-        ];
-
-        foreach ($candidates as $candidate) {
-            if (is_numeric($candidate) && (int) $candidate > 0) {
-                return (int) $candidate;
-            }
-        }
-
-        return NotificationCatalog::BUSINESS_ID_DEFAULT;
+        return session_business_id() ?? NotificationCatalog::BUSINESS_ID_DEFAULT;
     }
 }

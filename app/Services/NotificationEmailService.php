@@ -83,11 +83,6 @@ class NotificationEmailService
         return 'SMTP';
     }
 
-    protected function integrationDecryptContext(): string
-    {
-        return 'NotificationEmailService';
-    }
-
     /**
      * Send an email via MailerService (the canonical transport layer).
      *

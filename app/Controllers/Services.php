@@ -62,6 +62,7 @@ use App\Models\ServiceModel;
 use App\Models\CategoryModel;
 use App\Services\BookingMetricsService;
 use App\Services\ServiceMutationService;
+use App\Services\SlugService;
 use App\Traits\FormResponseTrait;
 
 class Services extends BaseController
@@ -72,7 +73,6 @@ class Services extends BaseController
     protected CategoryModel $categoryModel;
     protected BookingMetricsService $bookingMetrics;
     protected ServiceMutationService $serviceMutation;
-    private string $providerServicePivotTable;
 
     public function __construct(
         ?UserModel $userModel = null,
@@ -87,9 +87,6 @@ class Services extends BaseController
         $this->categoryModel = $categoryModel ?? new CategoryModel();
         $this->bookingMetrics = $bookingMetrics ?? new BookingMetricsService();
         $this->serviceMutation = $serviceMutation ?? new ServiceMutationService();
-        $this->providerServicePivotTable = $this->serviceModel->db !== null
-            ? $this->serviceModel->db->prefixTable('providers_services')
-            : 'providers_services';
         helper('permissions');
     }
 
@@ -349,7 +346,7 @@ class Services extends BaseController
         }
 
         $serviceData = $this->buildServicePayload($input, true);
-        $serviceData['slug'] = $this->resolveServiceSlug($input['slug'] ?? null, $serviceData['name'] ?? '', null);
+        $serviceData['slug'] = (new SlugService())->resolve('services', $input['slug'] ?? null, $serviceData['name'] ?? '', 'service', null);
 
         if (ENVIRONMENT === 'development') {
             log_message('debug', 'Service store - Prepared data: ' . json_encode($serviceData));
@@ -422,7 +419,7 @@ class Services extends BaseController
         if ($existingSlug !== '' && !$allowSlugUnlock) {
             $serviceData['slug'] = $existingSlug;
         } else {
-            $serviceData['slug'] = $this->resolveServiceSlug($input['slug'] ?? null, $serviceData['name'] ?? '', (int) $serviceId);
+            $serviceData['slug'] = (new SlugService())->resolve('services', $input['slug'] ?? null, $serviceData['name'] ?? '', 'service', (int) $serviceId);
         }
 
         // Provide the current record ID so model uniqueness rules can exclude it.
@@ -502,49 +499,7 @@ class Services extends BaseController
         return json_encode($filtered);
     }
 
-    private function resolveServiceSlug($requestedSlug, string $name, ?int $excludeServiceId): string
-    {
-        $base = trim((string) $requestedSlug);
-        if ($base === '') {
-            $base = $name;
-        }
 
-        $slug = $this->slugify($base);
-        if ($slug === '') {
-            $slug = 'service';
-        }
-
-        return $this->ensureUniqueServiceSlug($slug, $excludeServiceId);
-    }
-
-    private function slugify(string $value): string
-    {
-        $value = strtolower(trim($value));
-        $value = preg_replace('/[^a-z0-9]+/', '-', $value) ?? '';
-        return trim($value, '-');
-    }
-
-    private function ensureUniqueServiceSlug(string $baseSlug, ?int $excludeServiceId): string
-    {
-        $table = $this->serviceModel->db->prefixTable('services');
-        $candidate = $baseSlug;
-        $suffix = 2;
-
-        while (true) {
-            $builder = $this->serviceModel->db->table($table)->select('id')->where('slug', $candidate);
-            if ($excludeServiceId !== null) {
-                $builder->where('id !=', $excludeServiceId);
-            }
-
-            $exists = (bool) $builder->get()->getRowArray();
-            if (!$exists) {
-                return $candidate;
-            }
-
-            $candidate = $baseSlug . '-' . $suffix;
-            $suffix++;
-        }
-    }
 
     private function normalizeProviderIds($providerIds): array
     {

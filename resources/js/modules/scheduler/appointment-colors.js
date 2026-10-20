@@ -10,6 +10,7 @@
  */
 
 import { DEFAULT_PROVIDER_COLOR } from './constants.js';
+import { isDarkMode } from '../../utils/dark-mode-detector.js';
 import { getAvatarInitials } from '../../utils/avatar.js';
 
 /**
@@ -195,22 +196,9 @@ export function getContrastColor(hexColor) {
     return luminance > 0.5 ? '#000000' : '#FFFFFF';
 }
 
-/**
- * Detect if dark mode is currently active
- * @returns {boolean}
- */
-export function isDarkMode() {
-    // Check data-theme attribute first (primary dark mode indicator)
-    const theme = document.documentElement.getAttribute('data-theme');
-    if (theme === 'dark') return true;
-    if (theme === 'light') return false;
-    
-    // Fallback: check .dark class if data-theme not set
-    if (document.documentElement.classList.contains('dark')) return true;
-    
-    // Final fallback: system preference
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
-}
+// Re-exported so scheduler modules keep a single import site; `.dark` on <html>
+// is the canonical trigger (see frontend skill §4).
+export { isDarkMode };
 
 /**
  * Status badge labels
