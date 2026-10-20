@@ -59,6 +59,7 @@
 
 namespace App\Models;
 
+use App\Services\SchemaInspector;
 use App\Models\BaseModel;
 
 class CustomerModel extends BaseModel
@@ -98,40 +99,7 @@ class CustomerModel extends BaseModel
 
 	private function hasCustomerColumn(string $column): bool
 	{
-		static $cache = [];
-
-		if (array_key_exists($column, $cache)) {
-			return $cache[$column];
-		}
-
-		$prefix = method_exists($this->db, 'getPrefix') ? (string) $this->db->getPrefix() : '';
-		$unprefixedTable = $prefix !== '' ? preg_replace('/^' . preg_quote($prefix, '/') . '/', '', $this->table) : $this->table;
-
-		$tableCandidates = array_values(array_unique([
-			$this->table,
-			method_exists($this->db, 'prefixTable') ? $this->db->prefixTable($unprefixedTable) : $this->table,
-			$unprefixedTable,
-		]));
-
-		foreach ($tableCandidates as $candidate) {
-			if (!is_string($candidate) || $candidate === '') {
-				continue;
-			}
-
-			try {
-				foreach ($this->db->getFieldData($candidate) as $field) {
-					if ((string) ($field->name ?? '') === $column) {
-						$cache[$column] = true;
-						return true;
-					}
-				}
-			} catch (\Throwable $e) {
-				// Try the next candidate.
-			}
-		}
-
-		$cache[$column] = false;
-		return false;
+		return SchemaInspector::hasColumn($this->table, $column, $this->db);
 	}
 
 	/**

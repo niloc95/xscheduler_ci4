@@ -17,8 +17,6 @@ class ProfilePageService
     protected AppointmentModel $appointmentModel;
     protected AuditLogModel $auditLogModel;
     protected ProviderStaffModel $providerStaffModel;
-    protected ?bool $hasStatusColumn = null;
-    protected ?bool $hasIsActiveColumn = null;
 
     public function __construct(
         ?UserModel $userModel = null,
@@ -270,26 +268,11 @@ class ProfilePageService
 
     protected function usersColumnExists(string $column): bool
     {
-        $db = db_connect();
-        $usersTable = method_exists($db, 'prefixTable') ? $db->prefixTable('users') : 'xs_users';
-
-        if ($column === 'status') {
-            $this->hasStatusColumn ??= method_exists($db, 'fieldExists')
-                ? ($db->fieldExists('status', $usersTable) || $db->fieldExists('status', 'users'))
-                : true;
-
-            return $this->hasStatusColumn;
+        if (!in_array($column, ['status', 'is_active'], true)) {
+            return false;
         }
 
-        if ($column === 'is_active') {
-            $this->hasIsActiveColumn ??= method_exists($db, 'fieldExists')
-                ? ($db->fieldExists('is_active', $usersTable) || $db->fieldExists('is_active', 'users'))
-                : true;
-
-            return $this->hasIsActiveColumn;
-        }
-
-        return false;
+        return SchemaInspector::hasColumn('xs_users', $column);
     }
 
     protected function decodeAuditPayload(?string $payload): array

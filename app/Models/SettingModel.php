@@ -57,6 +57,7 @@
 
 namespace App\Models;
 
+use App\Services\SchemaInspector;
 use App\Models\BaseModel;
 
 class SettingModel extends BaseModel
@@ -217,18 +218,7 @@ class SettingModel extends BaseModel
 
     private function hasUpdatedByColumn(): bool
     {
-        try {
-            $database = $this->db->getDatabase();
-            $tableName = $this->table;
-            $query = $this->db->query(
-                'SELECT 1 FROM information_schema.columns WHERE table_schema = ? AND table_name = ? AND column_name = ? LIMIT 1',
-                [$database, $tableName, 'updated_by']
-            );
-
-            return $query->getNumRows() > 0;
-        } catch (\Throwable $e) {
-            return false;
-        }
+        return SchemaInspector::hasColumn($this->table, 'updated_by', $this->db);
     }
 
     private function encodeJsonValue($val): string

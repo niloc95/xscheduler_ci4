@@ -25,30 +25,9 @@ class WebhookIntegrationService
         return 'Webhook';
     }
 
-    protected function integrationDecryptContext(): string
-    {
-        return 'WebhookIntegrationService';
-    }
-
-    private function getRow(int $businessId): ?array
-    {
-        try {
-            $model = new BusinessIntegrationModel();
-            $row = $model
-                ->where('business_id', $businessId)
-                ->where('channel', self::CHANNEL)
-                ->where('provider_name', self::PROVIDER)
-                ->first();
-            return is_array($row) ? $row : null;
-        } catch (\Throwable $e) {
-            log_message('debug', 'WebhookIntegrationService::getRow - ' . $e->getMessage());
-            return null;
-        }
-    }
-
     public function getPublicIntegration(int $businessId): array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
 
         if (!$row) {
             return [
@@ -89,7 +68,7 @@ class WebhookIntegrationService
             return ['ok' => false, 'error' => 'Endpoint URL must be a valid http or https URL.'];
         }
 
-        $existing = $this->getRow($businessId);
+        $existing = $this->getIntegrationRow($businessId);
         // Preserve existing secret if omitted
         if ($secret === '' && $existing) {
             $existingConfig = $this->decryptConfig($existing['encrypted_config'] ?? null);
@@ -126,7 +105,7 @@ class WebhookIntegrationService
 
     public function testConnection(int $businessId): array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
         if (!$row) {
             return ['ok' => false, 'error' => 'No webhook configured.'];
         }
@@ -177,7 +156,7 @@ class WebhookIntegrationService
 
     public function disconnect(int $businessId): array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
         if (!$row) {
             return ['ok' => true];
         }
@@ -191,7 +170,7 @@ class WebhookIntegrationService
      */
     public function dispatch(int $businessId, string $event, array $payload): void
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
         if (!$row || !(bool) ($row['is_active'] ?? false)) {
             return;
         }

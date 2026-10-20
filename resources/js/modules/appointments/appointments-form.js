@@ -3,6 +3,7 @@ import { normalizeLocalPhoneForCountry } from '../../utils/phone-country-selecto
 import { getBrowserTimezone, getBrowserTimezoneHeaders, getTimezoneOffsetForTimezone } from '../../core/datetime.js';
 import { syncCsrfIntoForm, rotateCsrfFromResponse } from '../../core/csrf.js';
 import { apiRequest } from '../../core/api.js';
+import { escapeHtml } from '../../utils/html.js';
 import { getAvatarInitials, getDisplayName } from '../../utils/avatar.js';
 
 function getAppointmentForm() {
@@ -244,7 +245,6 @@ function initCustomerModeControls(form) {
     const selectedCustomerIdInput = document.getElementById('selected_customer_id');
     const clearSearchBtn = document.getElementById('clear_search_btn');
     const searchUrl = form.dataset.searchUrl || `${getBaseUrl().replace(/\/$/, '')}/dashboard/search`;
-    const escapeHtml = window.xsEscapeHtml || ((value) => String(value ?? ''));
 
     let searchTimeout = null;
     let selectedCustomer = null;

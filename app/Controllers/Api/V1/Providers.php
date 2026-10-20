@@ -61,6 +61,7 @@ use App\Models\ProviderStaffModel;
 use App\Models\ServiceModel;
 use App\Models\UserModel;
 use App\Models\ProviderScheduleModel;
+use App\Services\ImageResizeService;
 use App\Services\TimezoneService;
 use App\Services\UserManagementMutationService;
 
@@ -102,15 +103,7 @@ class Providers extends BaseApiController
         }
 
         // Only return providers that have at least one active service assigned.
-        $db      = \Config\Database::connect();
-        $psTable = $db->prefixTable('providers_services');
-        $sTable  = $db->prefixTable('services');
-        $rowsModel->whereIn('id', static function (\CodeIgniter\Database\BaseBuilder $sub) use ($psTable, $sTable): void {
-            $sub->select('ps.provider_id')
-                ->from("{$psTable} ps")
-                ->join("{$sTable} s", 's.id = ps.service_id')
-                ->where('s.active', 1);
-        });
+        $rowsModel->whereHasActiveService();
 
         $allScopedRows = $rowsModel
             ->orderBy($sortField, strtoupper($sortDir))
@@ -295,53 +288,13 @@ class Providers extends BaseApiController
             $endDate = date('Y-m-t');
         }
 
-        // Build query
-        $db = \Config\Database::connect();
-        $builder = $db->table('xs_appointments a')
-            ->select('a.*, 
-                      CONCAT(c.first_name, " ", COALESCE(c.last_name, "")) as customer_name,
-                      c.email as customer_email,
-                      c.phone as customer_phone,
-                      s.name as service_name,
-                      s.duration_min as service_duration,
-                      s.price as service_price')
-            ->join('xs_customers c', 'c.id = a.customer_id', 'left')
-            ->join('xs_services s', 's.id = a.service_id', 'left')
-            ->where('a.provider_id', $id);
-
-        // Convert local date boundaries to UTC for querying UTC-stored columns
-        $localTz = TimezoneService::businessTimezone();
-        $utcTz   = new \DateTimeZone('UTC');
-        $startUtc = (new \DateTime($startDate . ' 00:00:00', new \DateTimeZone($localTz)))
-            ->setTimezone($utcTz)->format('Y-m-d H:i:s');
-        $endUtc   = (new \DateTime($endDate . ' 23:59:59', new \DateTimeZone($localTz)))
-            ->setTimezone($utcTz)->format('Y-m-d H:i:s');
-
-        $builder->where('a.start_at >=', $startUtc)
-            ->where('a.start_at <=', $endUtc)
-            ->orderBy('a.start_at', 'ASC');
-
-        // Apply optional filters
-        if ($futureOnly) {
-            $todayUtc = (new \DateTime('today', new \DateTimeZone($localTz)))
-                ->setTimezone($utcTz)->format('Y-m-d H:i:s');
-            $builder->where('a.start_at >=', $todayUtc);
-        }
-
-        if ($status) {
-            $builder->where('a.status', $status);
-        }
-
-        if ($serviceId) {
-            $builder->where('a.service_id', (int) $serviceId);
-        }
-
-        // Get total count
-        $countBuilder = clone $builder;
-        $total = $countBuilder->countAllResults(false);
-
-        // Apply pagination
-        $appointments = $builder->limit($perPage, $offset)->get()->getResultArray();
+        $page = (new \App\Models\AppointmentModel())->getProviderAppointmentsPage($id, $startDate, $endDate, [
+            'status' => $status ?: null,
+            'service_id' => $serviceId ? (int) $serviceId : null,
+            'future_only' => $futureOnly,
+        ], $perPage, $offset);
+        $appointments = $page['items'];
+        $total = $page['total'];
 
         // Format response
         $items = array_map(function ($apt) {
@@ -429,12 +382,7 @@ class Providers extends BaseApiController
 
         $absolute = rtrim($targetDir, '/').'/'.$safeName;
         try {
-            [$w, $h] = @getimagesize($absolute) ?: [null, null];
-            if ($w && $w > 600) {
-                $ratio = $h / $w;
-                $newW = 600; $newH = max(1, (int) round($newW * $ratio));
-                $this->resizeImageInPlace($absolute, $realMime, $newW, $newH);
-            }
+            (new ImageResizeService())->constrainWidth($absolute, $realMime, 600);
         } catch (\Throwable $e) {
             // Image resize failed, continue with original size
             log_message('debug', 'Provider image resize skipped: ' . $e->getMessage());
@@ -458,33 +406,6 @@ class Providers extends BaseApiController
             return base_url($path);
         }
         return base_url('writable/' . $path);
-    }
-
-    private function resizeImageInPlace(string $path, string $mime, int $newW, int $newH): void
-    {
-        switch ($mime) {
-            case 'image/jpeg': $src = @imagecreatefromjpeg($path); break;
-            case 'image/png': $src = @imagecreatefrompng($path); break;
-            case 'image/gif': $src = @imagecreatefromgif($path); break;
-            case 'image/webp': if (function_exists('imagecreatefromwebp')) { $src = @imagecreatefromwebp($path); } else { return; } break;
-            default: return;
-        }
-        if (!$src) return;
-        $dst = imagecreatetruecolor($newW, $newH);
-        if (in_array($mime, ['image/png','image/gif'], true)) {
-            imagecolortransparent($dst, imagecolorallocatealpha($dst, 0, 0, 0, 127));
-            imagealphablending($dst, false);
-            imagesavealpha($dst, true);
-        }
-        $sw = imagesx($src); $sh = imagesy($src);
-        imagecopyresampled($dst, $src, 0, 0, 0, 0, $newW, $newH, $sw, $sh);
-        switch ($mime) {
-            case 'image/jpeg': @imagejpeg($dst, $path, 85); break;
-            case 'image/png': @imagepng($dst, $path, 6); break;
-            case 'image/gif': @imagegif($dst, $path); break;
-            case 'image/webp': if (function_exists('imagewebp')) { @imagewebp($dst, $path, 85); } break;
-        }
-        imagedestroy($src); imagedestroy($dst);
     }
 
     /**

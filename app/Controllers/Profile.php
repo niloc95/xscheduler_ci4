@@ -51,8 +51,10 @@
 
 namespace App\Controllers;
 
+use App\Services\SchemaInspector;
 use App\Models\AuditLogModel;
 use App\Models\UserModel;
+use App\Services\ImageResizeService;
 use App\Services\PhoneNumberService;
 use App\Services\ProfilePageService;
 
@@ -406,15 +408,7 @@ class Profile extends BaseController
         $absolute = rtrim($targetDir, '/').'/'.$safeName;
         $mimeForResize = $realMime ?: $clientMime;
 
-        if (!in_array($mimeForResize, ['image/svg+xml','image/svg'], true)) {
-            [$w, $h] = @getimagesize($absolute) ?: [null, null];
-            if ($w && $w > 600) {
-                $ratio = $h ? ($h / $w) : 1;
-                $newW = 600;
-                $newH = max(1, (int) round($newW * $ratio));
-                $this->resizeImageInPlace($absolute, $mimeForResize, $newW, $newH);
-            }
-        }
+        (new ImageResizeService())->constrainWidth($absolute, $mimeForResize, 600);
 
         $relative = 'assets/profile/' . $safeName;
 
@@ -561,53 +555,6 @@ class Profile extends BaseController
         return null;
     }
 
-    private function resizeImageInPlace(string $path, string $mime, int $newW, int $newH): void
-    {
-        switch ($mime) {
-            case 'image/jpeg': $src = @imagecreatefromjpeg($path); break;
-            case 'image/png': $src = @imagecreatefrompng($path); break;
-            case 'image/gif': $src = @imagecreatefromgif($path); break;
-            case 'image/webp':
-                if (function_exists('imagecreatefromwebp')) {
-                    $src = @imagecreatefromwebp($path);
-                } else {
-                    return;
-                }
-                break;
-            default:
-                return;
-        }
-
-        if (!$src) {
-            return;
-        }
-
-        $dst = imagecreatetruecolor($newW, $newH);
-        if (in_array($mime, ['image/png','image/gif'], true)) {
-            imagecolortransparent($dst, imagecolorallocatealpha($dst, 0, 0, 0, 127));
-            imagealphablending($dst, false);
-            imagesavealpha($dst, true);
-        }
-
-        $sw = imagesx($src);
-        $sh = imagesy($src);
-        imagecopyresampled($dst, $src, 0, 0, 0, 0, $newW, $newH, $sw, $sh);
-
-        switch ($mime) {
-            case 'image/jpeg': @imagejpeg($dst, $path, 85); break;
-            case 'image/png': @imagepng($dst, $path, 6); break;
-            case 'image/gif': @imagegif($dst, $path); break;
-            case 'image/webp':
-                if (function_exists('imagewebp')) {
-                    @imagewebp($dst, $path, 85);
-                }
-                break;
-        }
-
-        imagedestroy($src);
-        imagedestroy($dst);
-    }
-
     /**
      * Update appointment notification preference for the current user.
      * POST /profile/update-notifications
@@ -704,22 +651,7 @@ class Profile extends BaseController
      */
     private function hasNotifyOnAppointmentsColumn(): bool
     {
-        static $exists = null;
-
-        if ($exists !== null) {
-            return $exists;
-        }
-
-        try {
-            $db = \Config\Database::connect();
-            $exists = method_exists($db, 'fieldExists')
-                ? (bool) $db->fieldExists('notify_on_appointments', 'xs_users')
-                : true;
-        } catch (\Throwable $e) {
-            $exists = false;
-        }
-
-        return $exists;
+        return SchemaInspector::hasColumn('xs_users', 'notify_on_appointments');
     }
 
     private function refreshSessionUser(array $userRecord): void

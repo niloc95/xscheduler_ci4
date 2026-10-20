@@ -1,20 +1,7 @@
+import { escapeHtml } from '../../utils/html.js';
 import { initSettingsFormEnhancements } from './settings-form-ui.js';
 import { initSystemUpdateTab } from './system-update.js';
 import { apiRequest } from '../../core/api.js';
-
-const escapeHtml = (value) => {
-    if (typeof window.xsEscapeHtml === 'function') {
-        return window.xsEscapeHtml(value);
-    }
-
-    if (value === null || value === undefined) {
-        return '';
-    }
-
-    const div = document.createElement('div');
-    div.textContent = String(value);
-    return div.innerHTML;
-};
 
 const debugLog = (...args) => {
     if (typeof window.xsDebugLog === 'function') {

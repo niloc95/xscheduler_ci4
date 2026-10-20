@@ -32,29 +32,9 @@ class PayFastIntegrationService
         return 'PayFast';
     }
 
-    protected function integrationDecryptContext(): string
-    {
-        return 'PayFastIntegrationService';
-    }
-
-    private function getRow(int $businessId): ?array
-    {
-        try {
-            $model = new BusinessIntegrationModel();
-            $row   = $model
-                ->where('business_id', $businessId)
-                ->where('channel', self::CHANNEL)
-                ->first();
-            return is_array($row) ? $row : null;
-        } catch (\Throwable $e) {
-            log_message('debug', 'PayFastIntegrationService::getRow - ' . $e->getMessage());
-            return null;
-        }
-    }
-
     public function getPublicIntegration(int $businessId): array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
 
         if (!$row) {
             return [
@@ -100,7 +80,7 @@ class PayFastIntegrationService
         $existing       = null;
         $existingConfig = [];
         if ($merchantKey === '' || $passphrase === '') {
-            $existing = $this->getRow($businessId);
+            $existing = $this->getIntegrationRow($businessId);
             if ($existing) {
                 $existingConfig = $this->decryptConfig($existing['encrypted_config'] ?? null);
             }
@@ -134,7 +114,7 @@ class PayFastIntegrationService
         }
 
         $model    = new BusinessIntegrationModel();
-        $existing = $this->getRow($businessId);
+        $existing = $this->getIntegrationRow($businessId);
         $payload  = [
             'business_id'      => $businessId,
             'channel'          => self::CHANNEL,
@@ -154,7 +134,7 @@ class PayFastIntegrationService
 
     public function testConnection(int $businessId): array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
         if (!$row) {
             return ['ok' => false, 'error' => 'PayFast is not configured.'];
         }
@@ -221,7 +201,7 @@ class PayFastIntegrationService
      */
     public function getDecryptedConfig(int $businessId): ?array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
         if (!$row) {
             return null;
         }
@@ -230,7 +210,7 @@ class PayFastIntegrationService
 
     public function disconnect(int $businessId): array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
         if (!$row) {
             return ['ok' => true];
         }
@@ -244,7 +224,7 @@ class PayFastIntegrationService
      */
     public function buildPaymentUrl(int $businessId, array $paymentData): array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
         if (!$row || !(bool) ($row['is_active'] ?? false)) {
             return ['ok' => false, 'error' => 'PayFast is not connected.'];
         }

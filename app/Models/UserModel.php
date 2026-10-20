@@ -62,6 +62,7 @@ namespace App\Models;
 
 use App\Models\BaseModel;
 use App\Models\ProviderStaffModel;
+use App\Services\SchemaInspector;
 
 class UserModel extends BaseModel
 {
@@ -331,32 +332,34 @@ class UserModel extends BaseModel
         // xs_user_roles has 'admin' as their derived primary (highest privilege).
         $builder = $this->where('role', 'admin');
 
-        if ($this->hasUsersColumn('is_active')) {
-            $builder->where('is_active', 1);
-        } elseif ($this->hasUsersColumn('status')) {
-            $builder->where('status', 'active');
-        }
+        self::applyActiveFilter($builder);
 
         return (int) $builder->countAllResults();
     }
 
     private function hasUsersColumn(string $column): bool
     {
-        static $cache = [];
+        return SchemaInspector::hasColumn($this->table, $column, $this->db);
+    }
 
-        if (array_key_exists($column, $cache)) {
-            return $cache[$column];
+    /**
+     * Restrict a users query to active accounts, whichever activity column this
+     * install has (`is_active` on current schemas, legacy `status` otherwise).
+     *
+     * @param object $builder Query builder or model to constrain.
+     * @param string $alias   Table alias used in the query (e.g. 'u'), or '' for none.
+     */
+    public static function applyActiveFilter(object $builder, string $alias = ''): object
+    {
+        $prefix = $alias !== '' ? $alias . '.' : '';
+
+        if (SchemaInspector::hasColumn('xs_users', 'is_active')) {
+            $builder->where($prefix . 'is_active', 1);
+        } elseif (SchemaInspector::hasColumn('xs_users', 'status')) {
+            $builder->where($prefix . 'status', 'active');
         }
 
-        try {
-            $cache[$column] = method_exists($this->db, 'fieldExists')
-                ? $this->db->fieldExists($column, $this->table)
-                : true;
-        } catch (\Throwable $e) {
-            $cache[$column] = false;
-        }
-
-        return $cache[$column];
+        return $builder;
     }
 
     /**
@@ -448,6 +451,22 @@ class UserModel extends BaseModel
     }
 
     /**
+     * Restrict to users assigned at least one active service (bookable providers).
+     */
+    public function whereHasActiveService(): static
+    {
+        $psTable = $this->db->prefixTable('providers_services');
+        $sTable = $this->db->prefixTable('services');
+
+        return $this->whereIn('id', static function (\CodeIgniter\Database\BaseBuilder $sub) use ($psTable, $sTable): void {
+            $sub->select('ps.provider_id')
+                ->from("{$psTable} ps")
+                ->join("{$sTable} s", 's.id = ps.service_id')
+                ->where('s.active', 1);
+        });
+    }
+
+    /**
      * Get users by role with active status.
      * Uses xs_user_roles (authoritative) via whereHasRole().
      */
@@ -455,11 +474,7 @@ class UserModel extends BaseModel
     {
         $builder = $this->whereHasRole($role);
 
-        if ($this->hasUsersColumn('is_active')) {
-            $builder->where('is_active', true);
-        } elseif ($this->hasUsersColumn('status')) {
-            $builder->where('status', 'active');
-        }
+        self::applyActiveFilter($builder);
 
         return $builder->findAll();
     }
@@ -486,11 +501,7 @@ class UserModel extends BaseModel
     {
         $builder = $this->whereHasRole('provider');
 
-        if ($this->hasUsersColumn('is_active')) {
-            $builder->where('is_active', true);
-        } elseif ($this->hasUsersColumn('status')) {
-            $builder->where('status', 'active');
-        }
+        self::applyActiveFilter($builder);
 
         return $builder->findAll();
     }
@@ -516,11 +527,7 @@ class UserModel extends BaseModel
             ->where('s.active', 1)
             ->orderBy('u.name', 'ASC');
 
-        if ($this->hasUsersColumn('is_active')) {
-            $builder->where('u.is_active', true);
-        } elseif ($this->hasUsersColumn('status')) {
-            $builder->where('u.status', 'active');
-        }
+        self::applyActiveFilter($builder, 'u');
 
         $rows = $builder->get()->getResultArray();
 
@@ -802,11 +809,7 @@ class UserModel extends BaseModel
         $colorUsage = [];
         $providerBuilder = $this->whereHasRole('provider')->select('color');
 
-        if ($this->hasUsersColumn('is_active')) {
-            $providerBuilder->where('is_active', true);
-        } elseif ($this->hasUsersColumn('status')) {
-            $providerBuilder->where('status', 'active');
-        }
+        self::applyActiveFilter($providerBuilder);
 
         $providers = $providerBuilder->findAll();
 

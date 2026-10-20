@@ -29,29 +29,9 @@ class ZoomIntegrationService
         return 'Zoom';
     }
 
-    protected function integrationDecryptContext(): string
-    {
-        return 'ZoomIntegrationService';
-    }
-
-    private function getRow(int $businessId): ?array
-    {
-        try {
-            $model = new BusinessIntegrationModel();
-            $row = $model
-                ->where('business_id', $businessId)
-                ->where('channel', self::CHANNEL)
-                ->first();
-            return is_array($row) ? $row : null;
-        } catch (\Throwable $e) {
-            log_message('debug', 'ZoomIntegrationService::getRow - ' . $e->getMessage());
-            return null;
-        }
-    }
-
     public function getPublicIntegration(int $businessId): array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
 
         if (!$row) {
             return [
@@ -92,7 +72,7 @@ class ZoomIntegrationService
 
         // Preserve existing client secret if omitted
         if ($clientSecret === '') {
-            $existing = $this->getRow($businessId);
+            $existing = $this->getIntegrationRow($businessId);
             if ($existing) {
                 $existingConfig = $this->decryptConfig($existing['encrypted_config'] ?? null);
                 $clientSecret   = (string) ($existingConfig['client_secret'] ?? '');
@@ -113,7 +93,7 @@ class ZoomIntegrationService
         }
 
         $model   = new BusinessIntegrationModel();
-        $existing = $this->getRow($businessId);
+        $existing = $this->getIntegrationRow($businessId);
         $payload = [
             'business_id'      => $businessId,
             'channel'          => self::CHANNEL,
@@ -161,7 +141,7 @@ class ZoomIntegrationService
 
     public function testConnection(int $businessId): array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
         if (!$row) {
             return ['ok' => false, 'error' => 'Zoom is not configured.'];
         }
@@ -194,7 +174,7 @@ class ZoomIntegrationService
 
     public function disconnect(int $businessId): array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
         if (!$row) {
             return ['ok' => true];
         }
@@ -208,7 +188,7 @@ class ZoomIntegrationService
      */
     public function createMeeting(int $businessId, array $appointment): array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
         if (!$row) {
             return ['ok' => false, 'error' => 'Zoom not connected.'];
         }

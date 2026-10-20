@@ -87,11 +87,6 @@ class NotificationSmsService
         return 'SMS';
     }
 
-    protected function integrationDecryptContext(): string
-    {
-        return 'NotificationSmsService';
-    }
-
     /**
      * Returns a safe-to-render subset of the stored SMS integration.
      * Secrets are never returned.

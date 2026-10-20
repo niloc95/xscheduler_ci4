@@ -151,10 +151,6 @@ class Appointments extends BaseController
                 : [0];
         }
 
-        $db = \Config\Database::connect();
-        $usersHasIsActive = method_exists($db, 'fieldExists') ? $db->fieldExists('is_active', 'xs_users') : true;
-        $usersHasStatus = method_exists($db, 'fieldExists') ? $db->fieldExists('status', 'xs_users') : true;
-        
         // Get real appointments from database
         $appointments = $this->appointmentModel->getDashboardAppointments(null, $context, 100);
         
@@ -169,39 +165,22 @@ class Appointments extends BaseController
             $activeProvidersBuilder->whereIn('id', $staffScopedProviderIds);
         }
 
-        if ($usersHasIsActive) {
-            $activeProvidersBuilder->where('is_active', true);
-        } elseif ($usersHasStatus) {
-            $activeProvidersBuilder->where('status', 'active');
-        }
+        UserModel::applyActiveFilter($activeProvidersBuilder);
 
         $activeProviders = $activeProvidersBuilder->findAll();
         
         // Get ALL providers for filter dropdown (§4.4: use xs_user_roles).
         // Only include providers that have at least one active service assigned.
-        $db      = \Config\Database::connect();
-        $psTable = $db->prefixTable('providers_services');
-        $sTable  = $db->prefixTable('services');
-
         $allProvidersBuilder = $this->userModel
             ->whereHasRole('provider')
-            ->whereIn('id', static function (\CodeIgniter\Database\BaseBuilder $sub) use ($psTable, $sTable): void {
-                $sub->select('ps.provider_id')
-                    ->from("{$psTable} ps")
-                    ->join("{$sTable} s", 's.id = ps.service_id')
-                    ->where('s.active', 1);
-            })
+            ->whereHasActiveService()
             ->orderBy('name', 'ASC');
 
         if ($staffScopedProviderIds !== null) {
             $allProvidersBuilder->whereIn('id', $staffScopedProviderIds);
         }
 
-        if ($usersHasIsActive) {
-            $allProvidersBuilder->where('is_active', true);
-        } elseif ($usersHasStatus) {
-            $allProvidersBuilder->where('status', 'active');
-        }
+        UserModel::applyActiveFilter($allProvidersBuilder);
 
         $allProviders = $allProvidersBuilder->findAll();
         

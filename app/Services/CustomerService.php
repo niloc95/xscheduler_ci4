@@ -258,7 +258,7 @@ class CustomerService
             'changed_fields' => array_values($changedFields),
         ]);
 
-        $actorUserId = $this->resolveActorUserId();
+        $actorUserId = current_actor_user_id();
         if ($actorUserId === null) {
             return;
         }
@@ -317,19 +317,4 @@ class CustomerService
         $this->logCustomerMutation('customer_updated', $id, array_keys($data));
     }
 
-    private function resolveActorUserId(): ?int
-    {
-        try {
-            if (function_exists('session')) {
-                $userId = session()->get('user_id');
-                if (is_numeric($userId) && (int) $userId > 0) {
-                    return (int) $userId;
-                }
-            }
-        } catch (\Throwable $e) {
-            return null;
-        }
-
-        return null;
-    }
 }

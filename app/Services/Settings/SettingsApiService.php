@@ -4,6 +4,7 @@ namespace App\Services\Settings;
 
 use App\Models\BusinessHourModel;
 use App\Models\SettingModel;
+use App\Models\UserModel;
 use App\Services\BookingSettingsService;
 use App\Services\CalendarConfigService;
 use App\Services\LocalizationSettingsService;
@@ -21,9 +22,6 @@ class SettingsApiService
     private BusinessHourModel $businessHourModel;
     private GeneralSettingsService $generalSettingsService;
     private BaseConnection $db;
-
-    /** @var array<string, bool> */
-    private array $columnExistsCache = [];
 
     public function __construct(
         ?SettingModel $settingModel = null,
@@ -260,66 +258,13 @@ class SettingsApiService
             ->join('xs_users u', 'u.id = bh.provider_id')
             ->where('u.role', 'provider');
 
-        if ($this->hasUsersColumn('is_active')) {
-            $builder->where('u.is_active', 1);
-        } elseif ($this->hasUsersColumn('status')) {
-            $builder->where('u.status', 'active');
-        }
+        UserModel::applyActiveFilter($builder, 'u');
 
         return $builder
             ->orderBy('bh.weekday', 'ASC')
             ->limit(7)
             ->get()
             ->getResultArray();
-    }
-
-    private function hasUsersColumn(string $column): bool
-    {
-        $key = 'users.' . $column;
-
-        if (array_key_exists($key, $this->columnExistsCache)) {
-            return $this->columnExistsCache[$key];
-        }
-
-        $exists = false;
-
-        try {
-            if (!method_exists($this->db, 'getFieldData')) {
-                $this->columnExistsCache[$key] = true;
-                return true;
-            }
-
-            $prefix = method_exists($this->db, 'getPrefix') ? (string) $this->db->getPrefix() : '';
-            $candidates = [];
-            if (method_exists($this->db, 'prefixTable')) {
-                $candidates[] = (string) $this->db->prefixTable('users');
-            }
-            $candidates[] = 'users';
-
-            if ($prefix !== '') {
-                $candidates[] = $prefix . 'users';
-            }
-
-            foreach (array_values(array_unique($candidates)) as $candidate) {
-                try {
-                    $fields = $this->db->getFieldData($candidate);
-                    foreach ($fields as $field) {
-                        if ((string) ($field->name ?? '') === $column) {
-                            $exists = true;
-                            break 2;
-                        }
-                    }
-                } catch (\Throwable $inner) {
-                    // Try the next candidate table name.
-                }
-            }
-        } catch (\Throwable $e) {
-            $exists = false;
-        }
-
-        $this->columnExistsCache[$key] = $exists;
-
-        return $exists;
     }
 
     private function formatBusinessHoursRows(array $rows): array

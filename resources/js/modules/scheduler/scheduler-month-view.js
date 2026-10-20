@@ -577,10 +577,10 @@ export class MonthView {
             
             if (hasAppt) {
                 // Filled dot (has appointment)
-                return `<div class="w-2 h-2 rounded-full" style="background-color: ${color};" title="${escapeHtml(provider.name || provider.username)}"></div>`;
+                return `<div class="w-2 h-2 rounded-full" data-bg-color="${escapeHtml(color)}" title="${escapeHtml(provider.name || provider.username)}"></div>`;
             } else {
                 // Ring only (no appointment, but available)
-                return `<div class="w-2 h-2 rounded-full border border-current" style="color: ${color};" title="${escapeHtml(provider.name || provider.username)} (available)"></div>`;
+                return `<div class="w-2 h-2 rounded-full border border-current" data-text-color="${escapeHtml(color)}" title="${escapeHtml(provider.name || provider.username)} (available)"></div>`;
             }
         }).join('');
 
@@ -613,7 +613,7 @@ export class MonthView {
                 </div>
                 <!-- Availability Bar -->
                 <div class="w-full h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                    <div class="h-full ${barColorClass} transition-all" style="width: ${availabilityPercent}%;" title="${Math.round(availabilityPercent)}% available"></div>
+                    <div class="h-full ${barColorClass} transition-all" data-width-percent="${availabilityPercent}" title="${Math.round(availabilityPercent)}% available"></div>
                 </div>
             </div>
         `;

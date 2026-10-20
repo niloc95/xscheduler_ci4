@@ -157,7 +157,7 @@ class ServiceMutationService
 
     private function auditService(string $action, int $serviceId, array $fields, int $providerCount): void
     {
-        $actorId = $this->resolveActorUserId();
+        $actorId = current_actor_user_id();
         if ($actorId === null) {
             return;
         }
@@ -174,7 +174,7 @@ class ServiceMutationService
 
     private function auditCategory(string $action, int $categoryId, array $fields): void
     {
-        $actorId = $this->resolveActorUserId();
+        $actorId = current_actor_user_id();
         if ($actorId === null) {
             return;
         }
@@ -188,19 +188,4 @@ class ServiceMutationService
         }
     }
 
-    private function resolveActorUserId(): ?int
-    {
-        try {
-            if (function_exists('session')) {
-                $userId = session()->get('user_id');
-                if (is_numeric($userId) && (int) $userId > 0) {
-                    return (int) $userId;
-                }
-            }
-        } catch (\Throwable) {
-            return null;
-        }
-
-        return null;
-    }
 }

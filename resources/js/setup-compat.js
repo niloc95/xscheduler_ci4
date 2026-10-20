@@ -19,8 +19,10 @@
  *   // … existing setup.js code …
  *   initCompatibilityMode();
  *
- * The module is fully self-contained and adds no global state.
+ * The module adds no global state.
  */
+
+import { escapeHtml } from './utils/html.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DOM helpers
@@ -109,15 +111,6 @@ function renderConnectionResult(result) {
     `.trim();
 
     show(container, 'block');
-}
-
-/** Minimal HTML escape — avoids importing a utility just for this. */
-function escapeHtml(str) {
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

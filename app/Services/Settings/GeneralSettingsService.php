@@ -3,6 +3,7 @@
 namespace App\Services\Settings;
 
 use App\Models\SettingModel;
+use App\Services\ImageResizeService;
 use App\Services\TimezoneService;
 use CodeIgniter\HTTP\Files\UploadedFile;
 
@@ -120,11 +121,7 @@ class GeneralSettingsService
         $absolute = rtrim($targetDir, '/') . '/' . $safeName;
         try {
             if (!in_array($realMime, ['image/svg+xml', 'image/svg'], true)) {
-                [$width, $height] = @getimagesize($absolute) ?: [null, null];
-                if ($width && $width > 1200) {
-                    $ratio = $height ? ($height / $width) : 1;
-                    $this->resizeImageInPlace($absolute, $realMime ?: $clientMime, 1200, max(1, (int) round(1200 * $ratio)));
-                }
+                (new ImageResizeService())->constrainWidth($absolute, $realMime ?: $clientMime, 1200);
             }
         } catch (\Throwable $e) {
             log_message('warning', 'Logo upload resize skipped: {msg}', ['msg' => $e->getMessage()]);
@@ -481,15 +478,7 @@ class GeneralSettingsService
         log_message('debug', 'Logo upload: moved to {path}', ['path' => $absolute]);
 
         try {
-            if (!in_array($realMime, ['image/svg+xml', 'image/svg'], true)) {
-                [$width, $height] = @getimagesize($absolute) ?: [null, null];
-                if ($width && $width > 1200) {
-                    $ratio = $height / $width;
-                    $newWidth = 1200;
-                    $newHeight = max(1, (int) round($newWidth * $ratio));
-                    $this->resizeImageInPlace($absolute, $realMime, $newWidth, $newHeight);
-                }
-            }
+            (new ImageResizeService())->constrainWidth($absolute, $realMime, 1200);
         } catch (\Throwable $e) {
             log_message('debug', 'Logo image resize skipped: ' . $e->getMessage());
         }
@@ -565,64 +554,6 @@ class GeneralSettingsService
         }
 
         return rtrim(WRITEPATH, '/') . '/' . $normalized;
-    }
-
-    private function resizeImageInPlace(string $path, string $mime, int $newWidth, int $newHeight): void
-    {
-        switch ($mime) {
-            case 'image/jpeg':
-                $source = @imagecreatefromjpeg($path);
-                break;
-            case 'image/png':
-                $source = @imagecreatefrompng($path);
-                break;
-            case 'image/gif':
-                $source = @imagecreatefromgif($path);
-                break;
-            case 'image/webp':
-                if (function_exists('imagecreatefromwebp')) {
-                    $source = @imagecreatefromwebp($path);
-                    break;
-                }
-                return;
-            default:
-                return;
-        }
-
-        if (!$source) {
-            return;
-        }
-
-        $destination = imagecreatetruecolor($newWidth, $newHeight);
-        if (in_array($mime, ['image/png', 'image/gif'], true)) {
-            imagecolortransparent($destination, imagecolorallocatealpha($destination, 0, 0, 0, 127));
-            imagealphablending($destination, false);
-            imagesavealpha($destination, true);
-        }
-
-        $sourceWidth = imagesx($source);
-        $sourceHeight = imagesy($source);
-        imagecopyresampled($destination, $source, 0, 0, 0, 0, $newWidth, $newHeight, $sourceWidth, $sourceHeight);
-
-        switch ($mime) {
-            case 'image/jpeg':
-                @imagejpeg($destination, $path, 85);
-                break;
-            case 'image/png':
-                @imagepng($destination, $path, 6);
-                break;
-            case 'image/gif':
-                @imagegif($destination, $path);
-                break;
-            case 'image/webp':
-                if (function_exists('imagewebp')) {
-                    @imagewebp($destination, $path, 85);
-                }
-                break;
-        }
-
-        imagedestroy($source);
-        imagedestroy($destination);
     }
 
     private function localUploadLog(string $event, array $context = []): void

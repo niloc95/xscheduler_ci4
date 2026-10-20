@@ -60,6 +60,7 @@
 
 namespace App\Models;
 
+use App\Services\SchemaInspector;
 class NotificationQueueModel extends BaseModel
 {
     protected $table = 'xs_notification_queue';
@@ -67,9 +68,6 @@ class NotificationQueueModel extends BaseModel
 
     protected $beforeInsert = ['normalizeSchemaFields'];
     protected $beforeUpdate = ['normalizeSchemaFields'];
-
-    /** @var array<string, bool> */
-    private array $columnExistsCache = [];
 
     protected $allowedFields = [
         'business_id',
@@ -119,37 +117,6 @@ class NotificationQueueModel extends BaseModel
 
     private function hasTableColumn(string $column): bool
     {
-        if (array_key_exists($column, $this->columnExistsCache)) {
-            return $this->columnExistsCache[$column];
-        }
-
-        $exists = false;
-
-        try {
-            if (!method_exists($this->db, 'getFieldData')) {
-                $this->columnExistsCache[$column] = true;
-                return true;
-            }
-
-            foreach ([$this->table] as $candidate) {
-                try {
-                    $fields = $this->db->getFieldData($candidate);
-                    foreach ($fields as $field) {
-                        if ((string) ($field->name ?? '') === $column) {
-                            $exists = true;
-                            break 2;
-                        }
-                    }
-                } catch (\Throwable $inner) {
-                    // Try the next candidate table name.
-                }
-            }
-        } catch (\Throwable $e) {
-            $exists = false;
-        }
-
-        $this->columnExistsCache[$column] = $exists;
-
-        return $exists;
+        return SchemaInspector::hasColumn($this->table, $column, $this->db);
     }
 }

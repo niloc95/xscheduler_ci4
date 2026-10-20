@@ -146,6 +146,58 @@ if (!function_exists('current_user_id')) {
     }
 }
 
+if (!function_exists('current_actor_user_id')) {
+    /**
+     * The acting user's ID for audit/actor columns, or null when there is none.
+     *
+     * Same resolution as current_user_id() (API token first, then session), but
+     * never throws and never returns a non-positive ID — safe from CLI, cron and
+     * queue contexts where the session service may be unavailable.
+     */
+    function current_actor_user_id(): ?int
+    {
+        try {
+            $userId = current_user_id();
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        return is_numeric($userId) && (int) $userId > 0 ? (int) $userId : null;
+    }
+}
+
+if (!function_exists('session_business_id')) {
+    /**
+     * Get the active business ID from the session only, or null if none is set.
+     *
+     * Use this (not current_business_id()) where request params must NOT be able
+     * to choose the business — e.g. notification rules and integration settings,
+     * where a stale ?business_id= link would otherwise write to the wrong business.
+     */
+    function session_business_id(): ?int
+    {
+        $sessionUser = session()->get('user');
+        $sessionUser = is_array($sessionUser) ? $sessionUser : [];
+
+        $candidates = [
+            session()->get('business_id'),
+            session()->get('active_business_id'),
+            $sessionUser['business_id'] ?? null,
+            $sessionUser['active_business_id'] ?? null,
+            $sessionUser['businessId'] ?? null,
+            $sessionUser['activeBusinessId'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_numeric($candidate) && (int) $candidate > 0) {
+                return (int) $candidate;
+            }
+        }
+
+        return null;
+    }
+}
+
 if (!function_exists('current_business_id')) {
     /**
      * Get the active business ID from request or session context.
@@ -161,9 +213,6 @@ if (!function_exists('current_business_id')) {
             $request = null;
         }
 
-        $sessionUser = session()->get('user');
-        $sessionUser = is_array($sessionUser) ? $sessionUser : [];
-
         $candidates = [
             $request?->getGet('business_id'),
             $request?->getGet('businessId'),
@@ -172,18 +221,17 @@ if (!function_exists('current_business_id')) {
             // API token context sits between request params and session so a
             // token request scopes to the business its key was issued for.
             api_identity()?->businessId(),
-            session()->get('business_id'),
-            session()->get('active_business_id'),
-            $sessionUser['business_id'] ?? null,
-            $sessionUser['active_business_id'] ?? null,
-            $sessionUser['businessId'] ?? null,
-            $sessionUser['activeBusinessId'] ?? null,
         ];
 
         foreach ($candidates as $candidate) {
             if (is_numeric($candidate) && (int) $candidate > 0) {
                 return (int) $candidate;
             }
+        }
+
+        $sessionBusinessId = session_business_id();
+        if ($sessionBusinessId !== null) {
+            return $sessionBusinessId;
         }
 
         return max(1, (int) $fallback);

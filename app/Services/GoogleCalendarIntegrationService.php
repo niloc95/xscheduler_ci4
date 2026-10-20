@@ -36,26 +36,6 @@ class GoogleCalendarIntegrationService
         return 'GoogleCalendar';
     }
 
-    protected function integrationDecryptContext(): string
-    {
-        return 'GoogleCalendarIntegrationService';
-    }
-
-    private function getRow(int $businessId): ?array
-    {
-        try {
-            $model = new BusinessIntegrationModel();
-            $row   = $model
-                ->where('business_id', $businessId)
-                ->where('channel', self::CHANNEL)
-                ->first();
-            return is_array($row) ? $row : null;
-        } catch (\Throwable $e) {
-            log_message('debug', 'GoogleCalendarIntegrationService::getRow - ' . $e->getMessage());
-            return null;
-        }
-    }
-
     /**
      * The redirect URI that must be registered in Google Cloud Console.
      * Auto-generated from the application base URL so admins can copy it.
@@ -71,7 +51,7 @@ class GoogleCalendarIntegrationService
      */
     private function buildClient(int $businessId): \Google_Client
     {
-        $row    = $this->getRow($businessId);
+        $row    = $this->getIntegrationRow($businessId);
         $config = $row ? $this->decryptConfig($row['encrypted_config'] ?? null) : [];
 
         $clientId     = (string) ($config['client_id']     ?? getenv('GOOGLE_CALENDAR_CLIENT_ID')     ?? '');
@@ -93,7 +73,7 @@ class GoogleCalendarIntegrationService
      */
     public function isConfigured(int $businessId): bool
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
         if ($row) {
             $config = $this->decryptConfig($row['encrypted_config'] ?? null);
             if (!empty($config['client_id']) && !empty($config['client_secret'])) {
@@ -125,7 +105,7 @@ class GoogleCalendarIntegrationService
 
         // Preserve existing secret when the field is intentionally left blank on re-save
         if ($clientSecret === '') {
-            $existing = $this->getRow($businessId);
+            $existing = $this->getIntegrationRow($businessId);
             if ($existing) {
                 $existingConfig = $this->decryptConfig($existing['encrypted_config'] ?? null);
                 $clientSecret   = (string) ($existingConfig['client_secret'] ?? '');
@@ -136,7 +116,7 @@ class GoogleCalendarIntegrationService
         }
 
         // Merge into existing config — preserve access/refresh tokens if already connected
-        $existing       = $this->getRow($businessId);
+        $existing       = $this->getIntegrationRow($businessId);
         $existingConfig = $existing ? $this->decryptConfig($existing['encrypted_config'] ?? null) : [];
 
         $newConfig = array_merge($existingConfig, [
@@ -165,7 +145,7 @@ class GoogleCalendarIntegrationService
             }
 
             // Merge tokens into existing config — preserves client_id/client_secret
-            $existing       = $this->getRow($businessId);
+            $existing       = $this->getIntegrationRow($businessId);
             $existingConfig = $existing ? $this->decryptConfig($existing['encrypted_config'] ?? null) : [];
 
             $newConfig = array_merge($existingConfig, [
@@ -190,7 +170,7 @@ class GoogleCalendarIntegrationService
         }
 
         $model    = new BusinessIntegrationModel();
-        $existing = $this->getRow($businessId);
+        $existing = $this->getIntegrationRow($businessId);
         $payload  = [
             'business_id'      => $businessId,
             'channel'          => self::CHANNEL,
@@ -210,7 +190,7 @@ class GoogleCalendarIntegrationService
 
     public function getPublicIntegration(int $businessId): array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
 
         if (!$row) {
             return [
@@ -245,7 +225,7 @@ class GoogleCalendarIntegrationService
 
     private function getRefreshedClient(int $businessId): ?\Google_Client
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
         if (!$row) {
             return null;
         }
@@ -265,7 +245,7 @@ class GoogleCalendarIntegrationService
         if ($client->isAccessTokenExpired() && !empty($config['refresh_token'])) {
             $newToken = $client->fetchAccessTokenWithRefreshToken($config['refresh_token']);
             if (!isset($newToken['error'])) {
-                $existing       = $this->getRow($businessId);
+                $existing       = $this->getIntegrationRow($businessId);
                 $existingConfig = $existing ? $this->decryptConfig($existing['encrypted_config'] ?? null) : $config;
                 $existingConfig['access_token'] = $newToken['access_token'];
                 $existingConfig['token_expiry']  = time() + (int) ($newToken['expires_in'] ?? 3600);
@@ -288,13 +268,13 @@ class GoogleCalendarIntegrationService
             $service  = new \Google_Service_Calendar($client);
             $calendar = $service->calendars->get('primary');
             $model    = new BusinessIntegrationModel();
-            $row      = $this->getRow($businessId);
+            $row      = $this->getIntegrationRow($businessId);
 
             $this->updateHealth($model, $row, 'healthy', date('Y-m-d H:i:s'));
             return ['ok' => true, 'calendar_summary' => $calendar->getSummary()];
         } catch (\Throwable $e) {
             $model = new BusinessIntegrationModel();
-            $row   = $this->getRow($businessId);
+            $row   = $this->getIntegrationRow($businessId);
             if ($row) {
                 $this->updateHealth($model, $row, 'unhealthy', date('Y-m-d H:i:s'));
             }
@@ -304,7 +284,7 @@ class GoogleCalendarIntegrationService
 
     public function disconnect(int $businessId): array
     {
-        $row = $this->getRow($businessId);
+        $row = $this->getIntegrationRow($businessId);
         if (!$row) {
             return ['ok' => true];
         }
@@ -320,7 +300,7 @@ class GoogleCalendarIntegrationService
                 return ['ok' => false, 'error' => 'Google Calendar not connected.'];
             }
 
-            $row        = $this->getRow($businessId);
+            $row        = $this->getIntegrationRow($businessId);
             $config     = $this->decryptConfig($row['encrypted_config'] ?? null);
             $calendarId = (string) ($config['calendar_id'] ?? 'primary');
 
@@ -348,7 +328,7 @@ class GoogleCalendarIntegrationService
                 return ['ok' => false, 'error' => 'Google Calendar not connected.'];
             }
 
-            $row        = $this->getRow($businessId);
+            $row        = $this->getIntegrationRow($businessId);
             $config     = $this->decryptConfig($row['encrypted_config'] ?? null);
             $calendarId = (string) ($config['calendar_id'] ?? 'primary');
 

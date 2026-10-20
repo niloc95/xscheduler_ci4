@@ -1,4 +1,5 @@
 import { apiRequest } from '../../core/api.js';
+import { showToast } from '../../utils/toast.js';
 
 const GENERAL_FIELD_MAP = {
     company_name: 'general.company_name',
@@ -74,21 +75,6 @@ function debugLog(...args) {
     if (typeof window.xsDebugLog === 'function') {
         window.xsDebugLog(...args);
     }
-}
-
-function showToast(type, title, message, autoClose = type !== 'error') {
-    if (window.XSNotify?.toast) {
-        window.XSNotify.toast({
-            type,
-            title,
-            message,
-            autoClose,
-            duration: autoClose ? 4000 : undefined,
-        });
-        return;
-    }
-
-    console.error(message);
 }
 
 function getApiMessage(payload, fallbackMessage) {
