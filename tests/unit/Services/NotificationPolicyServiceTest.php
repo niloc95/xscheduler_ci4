@@ -15,6 +15,12 @@ final class NotificationPolicyServiceTest extends CIUnitTestCase
         parent::setUp();
 
         $this->configureTestingDatabaseEnvironment();
+
+        // The SeedDefaultNotificationRules migration pre-populates business 1;
+        // start from a clean slate so the fixture inserts don't hit the unique key.
+        $db = \Config\Database::connect('tests');
+        $db->table('business_notification_rules')->where('business_id', 1)->delete();
+        $db->table('business_integrations')->where('business_id', 1)->delete();
     }
 
     protected function tearDown(): void

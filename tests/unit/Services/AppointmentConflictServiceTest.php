@@ -35,7 +35,9 @@ final class AppointmentConflictServiceTest extends CIUnitTestCase
 
         $blockedModel = $this->getMockBuilder(BlockedTimeModel::class)
             ->disableOriginalConstructor()
-            ->onlyMethods(['groupStart', 'where', 'orWhere', 'groupEnd', 'findAll'])
+            ->onlyMethods(['findAll'])
+            // Query-builder calls are proxied through Model::__call, not declared.
+            ->addMethods(['groupStart', 'where', 'orWhere', 'groupEnd'])
             ->getMock();
 
         $blockedModel->method('groupStart')->willReturnSelf();
@@ -116,7 +118,9 @@ final class AppointmentConflictServiceTest extends CIUnitTestCase
 
         $blockedModel = $this->getMockBuilder(BlockedTimeModel::class)
             ->disableOriginalConstructor()
-            ->onlyMethods(['groupStart', 'where', 'orWhere', 'groupEnd', 'findAll'])
+            ->onlyMethods(['findAll'])
+            // Query-builder calls are proxied through Model::__call, not declared.
+            ->addMethods(['groupStart', 'where', 'orWhere', 'groupEnd'])
             ->getMock();
 
         $service = new ConflictService($appointmentModel, $blockedModel);

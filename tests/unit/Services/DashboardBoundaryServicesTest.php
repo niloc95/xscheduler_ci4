@@ -11,6 +11,7 @@ use App\Services\DashboardApiService;
 use App\Services\DashboardService;
 use App\Services\DashboardPageService;
 use CodeIgniter\HTTP\RedirectResponse;
+use App\Services\BookingMetricsService;
 use CodeIgniter\Test\CIUnitTestCase;
 
 /**
@@ -170,7 +171,8 @@ final class DashboardBoundaryServicesTest extends CIUnitTestCase
             $appointmentModel,
             $dashboardService,
             $authService,
-            $appointmentScopeService
+            $appointmentScopeService,
+            $this->bookingMetricsStub()
         );
 
         $payload = $service->buildLandingViewData([
@@ -273,7 +275,8 @@ final class DashboardBoundaryServicesTest extends CIUnitTestCase
             $appointmentModel,
             $dashboardService,
             $authService,
-            $appointmentScopeService
+            $appointmentScopeService,
+            $this->bookingMetricsStub()
         );
 
         $payload = $service->buildLandingViewData([
@@ -285,5 +288,13 @@ final class DashboardBoundaryServicesTest extends CIUnitTestCase
 
         $this->assertSame([14, 22], $payload['provider_scope']);
         $this->assertSame(1, $payload['metrics']['total']);
+    }
+
+    private function bookingMetricsStub(): BookingMetricsService
+    {
+        $metrics = $this->createMock(BookingMetricsService::class);
+        $metrics->method('getTotalBookings')->willReturn(0);
+
+        return $metrics;
     }
 }

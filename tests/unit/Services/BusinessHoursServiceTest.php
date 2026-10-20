@@ -2,7 +2,9 @@
 
 namespace Tests\Unit\Services;
 
+use App\Models\SettingModel;
 use App\Services\BusinessHoursService;
+use App\Services\LocalizationSettingsService;
 use CodeIgniter\Test\CIUnitTestCase;
 use DateTime;
 use DateTimeZone;
@@ -27,36 +29,47 @@ final class BusinessHoursServiceTest extends CIUnitTestCase
 
 
     /**
-     * Test formatHours returns formatted string
+     * formatHours follows the localization.time_format setting (default 24h).
      */
-    public function testFormatHoursReturnsFormattedString(): void
+    public function testFormatHoursUsesTwentyFourHourFormatByDefault(): void
     {
-        $hours = [
+        $service = new BusinessHoursService($this->localizationWithTimeFormat('24h'));
+
+        $this->assertSame('09:00 - 17:00', $service->formatHours([
             'weekday' => 1,
             'start_time' => '09:00:00',
-            'end_time' => '17:00:00'
-        ];
-        
-        $result = $this->service->formatHours($hours);
-        
-        $this->assertEquals('9:00 AM - 5:00 PM', $result);
+            'end_time' => '17:00:00',
+        ]));
     }
 
     /**
-     * Test formatHours handles noon and midnight correctly
+     * In 12h mode, midnight and noon render as 12:00 AM / 12:00 PM.
      */
-    public function testFormatHoursHandlesNoonAndMidnight(): void
+    public function testFormatHoursHandlesNoonAndMidnightInTwelveHourFormat(): void
     {
-        $hours = [
+        $service = new BusinessHoursService($this->localizationWithTimeFormat('12h'));
+
+        $result = $service->formatHours([
             'weekday' => 1,
             'start_time' => '00:00:00',
-            'end_time' => '12:00:00'
-        ];
-        
-        $result = $this->service->formatHours($hours);
-        
+            'end_time' => '12:00:00',
+        ]);
+
         $this->assertStringContainsString('12:00 AM', $result); // Midnight
         $this->assertStringContainsString('12:00 PM', $result); // Noon
+    }
+
+    private function localizationWithTimeFormat(string $format): LocalizationSettingsService
+    {
+        $settings = $this->createMock(SettingModel::class);
+        $settings->method('getByKeys')->willReturnCallback(
+            static fn (array $keys): array => array_merge(
+                array_fill_keys($keys, null),
+                in_array('localization.time_format', $keys, true) ? ['localization.time_format' => $format] : []
+            )
+        );
+
+        return new LocalizationSettingsService($settings);
     }
 
     /**

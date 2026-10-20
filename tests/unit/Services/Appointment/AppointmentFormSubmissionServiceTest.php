@@ -39,7 +39,11 @@ final class AppointmentFormSubmissionServiceTest extends CIUnitTestCase
         $this->assertSame(['email', 'whatsapp'], $payload['notification_types']);
     }
 
-    public function testBuildCustomerUpdateDataSerializesOnlyPresentCustomFields(): void
+    /**
+     * Custom fields are merged by CustomerCustomFieldService (stored-value aware),
+     * so the customer payload must not carry a raw custom_fields blob.
+     */
+    public function testBuildCustomerUpdateDataLeavesCustomFieldsToCustomFieldService(): void
     {
         $service = new AppointmentFormSubmissionService();
 
@@ -56,7 +60,7 @@ final class AppointmentFormSubmissionServiceTest extends CIUnitTestCase
         $this->assertSame('Jordan', $payload['first_name']);
         $this->assertSame('Kim', $payload['last_name']);
         $this->assertSame('jordan@example.com', $payload['email']);
-        $this->assertSame('{"custom_field_1":"Allergy note"}', $payload['custom_fields']);
+        $this->assertArrayNotHasKey('custom_fields', $payload);
     }
 
     public function testBuildUpdateAppointmentDataNormalizesOptionalLocationAndStatus(): void

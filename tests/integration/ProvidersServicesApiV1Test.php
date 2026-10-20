@@ -100,7 +100,7 @@ final class ProvidersServicesApiV1Test extends CIUnitTestCase
         $this->assertSame($this->providerId, $servicesPayload['meta']['providerId'] ?? null);
         $this->assertSame(1, $servicesPayload['meta']['total'] ?? null);
 
-        $appointments = $this->get('/api/v1/providers/' . $this->providerId . '/appointments?month=2026-05&status=confirmed&service_id=' . $this->serviceId . '&futureOnly=true&per_page=5');
+        $appointments = $this->get('/api/v1/providers/' . $this->providerId . '/appointments?month=' . $this->fixtureMonth() . '&status=confirmed&service_id=' . $this->serviceId . '&futureOnly=true&per_page=5');
         $appointments->assertOK();
 
         $appointmentsPayload = json_decode($appointments->getJSON(), true);
@@ -271,6 +271,12 @@ final class ProvidersServicesApiV1Test extends CIUnitTestCase
                 'service_id' => $this->otherProviderServiceId,
                 'created_at' => $now,
             ],
+            // The provider index only lists providers with an active service.
+            [
+                'provider_id' => $this->compatProviderId,
+                'service_id' => $this->serviceId,
+                'created_at' => $now,
+            ],
         ]);
 
         $db->table('customers')->insert([
@@ -289,8 +295,9 @@ final class ProvidersServicesApiV1Test extends CIUnitTestCase
             'provider_id' => $this->providerId,
             'service_id' => $this->serviceId,
             'hash' => hash('sha256', uniqid('provider_appointment_', true)),
-            'start_at' => '2026-05-10 09:00:00',
-            'end_at' => '2026-05-10 09:45:00',
+            // Always next month, so the futureOnly filter keeps it.
+            'start_at' => $this->fixtureMonth() . '-10 09:00:00',
+            'end_at' => $this->fixtureMonth() . '-10 09:45:00',
             'status' => 'confirmed',
             'notes' => 'Provider appointments API regression fixture',
             'created_at' => $now,
@@ -397,5 +404,10 @@ final class ProvidersServicesApiV1Test extends CIUnitTestCase
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
         $this->createdUserRolesTable = true;
+    }
+
+    private function fixtureMonth(): string
+    {
+        return date('Y-m', strtotime('first day of next month'));
     }
 }

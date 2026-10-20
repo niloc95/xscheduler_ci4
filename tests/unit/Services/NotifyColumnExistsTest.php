@@ -55,6 +55,7 @@ final class NotifyColumnExistsTest extends CIUnitTestCase
         ]);
 
         $userId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $userId, 'role' => 'provider', 'created_at' => date('Y-m-d H:i:s')]);
         $this->userIds[] = $userId;
 
         $row = $db->table('users')

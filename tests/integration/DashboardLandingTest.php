@@ -69,6 +69,7 @@ class DashboardLandingTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $this->adminId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $this->adminId, 'role' => 'admin', 'created_at' => date('Y-m-d H:i:s')]);
         
         $db->table('users')->insert([
             'name' => 'Dr. Provider',
@@ -82,6 +83,7 @@ class DashboardLandingTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $this->providerId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $this->providerId, 'role' => 'provider', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('customers')->insert([
             'first_name' => 'Test',
@@ -374,6 +376,7 @@ class DashboardLandingTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $secondProviderId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $secondProviderId, 'role' => 'provider', 'created_at' => date('Y-m-d H:i:s')]);
 
         // Create staff user
         $db->table('users')->insert([
@@ -387,6 +390,7 @@ class DashboardLandingTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $staffId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $staffId, 'role' => 'staff', 'created_at' => date('Y-m-d H:i:s')]);
 
         // Assign staff to first provider only
         $db->table('provider_staff_assignments')->insert([
@@ -428,6 +432,7 @@ class DashboardLandingTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $staffId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $staffId, 'role' => 'staff', 'created_at' => date('Y-m-d H:i:s')]);
 
         $authService = new AuthorizationService();
         
@@ -479,6 +484,7 @@ class DashboardLandingTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $staffId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $staffId, 'role' => 'staff', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('provider_staff_assignments')->insert([
             'provider_id' => $this->providerId,
@@ -527,6 +533,7 @@ class DashboardLandingTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $staffId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $staffId, 'role' => 'staff', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('provider_staff_assignments')->insert([
             'provider_id' => $this->providerId,

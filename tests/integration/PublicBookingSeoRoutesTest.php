@@ -228,6 +228,7 @@ final class PublicBookingSeoRoutesTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $this->providerPrimaryId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $this->providerPrimaryId, 'role' => 'provider', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('users')->insert([
             'name' => 'Dr Other Provider',
@@ -241,6 +242,7 @@ final class PublicBookingSeoRoutesTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $this->providerOtherId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $this->providerOtherId, 'role' => 'provider', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('users')->insert([
             'name' => 'Dr No Service',
@@ -254,6 +256,7 @@ final class PublicBookingSeoRoutesTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $this->providerNoServiceId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $this->providerNoServiceId, 'role' => 'provider', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('services')->insert([
             'name' => 'Deep Clean',

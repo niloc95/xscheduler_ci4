@@ -29,6 +29,7 @@ final class GlobalSearchServiceTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $providerId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $providerId, 'role' => 'provider', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('services')->insert([
             'name' => 'Searchable Facial',

@@ -20,6 +20,7 @@ final class AppointmentsApiJourneyTest extends CIUnitTestCase
     private int $providerId;
     private int $serviceId;
     private int $locationId;
+    private int $adminId;
     private array $appointmentIds = [];
     private array $customerIds = [];
 
@@ -30,11 +31,16 @@ final class AppointmentsApiJourneyTest extends CIUnitTestCase
         $this->configureTestingDatabaseEnvironment();
         $this->ensureSetupFlag();
         $this->seedFixtureData();
+        $this->actAsAdmin();
     }
 
     protected function tearDown(): void
     {
         $db = \Config\Database::connect('tests');
+
+        if (isset($this->adminId)) {
+            $db->table('users')->where('id', $this->adminId)->delete();
+        }
 
         if ($this->appointmentIds !== []) {
             $db->table('notification_queue')->whereIn('appointment_id', $this->appointmentIds)->delete();
@@ -362,6 +368,7 @@ final class AppointmentsApiJourneyTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $this->providerId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $this->providerId, 'role' => 'provider', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('locations')->insert([
             'provider_id' => $this->providerId,
@@ -486,4 +493,42 @@ final class AppointmentsApiJourneyTest extends CIUnitTestCase
             $_SERVER[$key] = $value;
         }
     }
+
+    /**
+     * /api/* routes require api_auth (session or Bearer token) since the
+     * external REST API landed; run these journeys as a signed-in admin.
+     */
+    private function actAsAdmin(): void
+    {
+        $db = \Config\Database::connect('tests');
+        $now = date('Y-m-d H:i:s');
+        $email = 'api-journey-admin-' . uniqid('', true) . '@example.com';
+
+        $db->table('users')->insert([
+            'name' => 'API Journey Admin',
+            'email' => $email,
+            'password_hash' => password_hash('password123', PASSWORD_DEFAULT),
+            'role' => 'admin',
+            'status' => 'active',
+            'is_active' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $this->adminId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $this->adminId, 'role' => 'admin', 'created_at' => $now]);
+
+        $this->withSession([
+            'isLoggedIn' => true,
+            'user_id' => $this->adminId,
+            'user' => [
+                'id' => $this->adminId,
+                'name' => 'API Journey Admin',
+                'email' => $email,
+                'role' => 'admin',
+                'roles' => ['admin'],
+                'active_role' => 'admin',
+            ],
+        ]);
+    }
+
 }

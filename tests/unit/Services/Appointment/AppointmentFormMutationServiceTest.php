@@ -9,6 +9,9 @@ use App\Services\Appointment\AppointmentFormMutationService;
 use App\Services\Appointment\AppointmentFormSubmissionService;
 use App\Services\AppointmentBookingService;
 use App\Services\AppointmentNotificationService;
+use App\Services\CustomerService;
+use App\Services\BookingSettingsService;
+use App\Services\CustomerCustomFieldService;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Validation\ValidationInterface;
 
@@ -69,6 +72,8 @@ final class AppointmentFormMutationServiceTest extends CIUnitTestCase
         $result = $service->createFromFormPayload([
             'appointment_date' => '2031-01-06',
             'appointment_time' => '09:00',
+            // New customers must supply a phone that normalizes to E.164.
+            'customer_phone' => '+15555550123',
         ], 'UTC');
 
         $this->assertTrue($result['success']);
@@ -116,7 +121,22 @@ final class AppointmentFormMutationServiceTest extends CIUnitTestCase
         $submission->method('buildUpdateAppointmentData')->willReturn(['status' => 'confirmed']);
 
         $customerModel = $this->createMock(CustomerModel::class);
-        $customerModel->expects($this->once())->method('update')->with(45, ['first_name' => 'Updated', 'phone' => '']);
+
+        // The customer is saved through CustomerService::upsertCustomer() with the
+        // normalized phone, then custom fields are merged by CustomerCustomFieldService.
+        $customerService = $this->createMock(CustomerService::class);
+        $customerService->expects($this->once())
+            ->method('upsertCustomer')
+            ->with($this->callback(static fn (array $data): bool => ($data['customer_id'] ?? null) === 45
+                && ($data['first_name'] ?? null) === 'Updated'
+                && ($data['phone'] ?? null) === '+15555550123'))
+            ->willReturn(['id' => 45]);
+
+        $bookingSettings = $this->createMock(BookingSettingsService::class);
+        $bookingSettings->method('getCustomFieldConfiguration')->willReturn([]);
+
+        $customFields = $this->createMock(CustomerCustomFieldService::class);
+        $customFields->expects($this->once())->method('mergeForCustomer')->with(45, [], []);
 
         $booking = $this->createMock(AppointmentBookingService::class);
         $booking->method('updateAppointment')->willReturn([
@@ -136,13 +156,18 @@ final class AppointmentFormMutationServiceTest extends CIUnitTestCase
             $booking,
             $customerModel,
             $appointmentModel,
-            $notifications
+            $notifications,
+            null,
+            $customerService,
+            $bookingSettings,
+            $customFields
         );
 
         $result = $service->updateFromFormPayload('apt-hash', [
             'appointment_date' => '2031-01-06',
             'appointment_time' => '10:00',
             'status' => 'confirmed',
+            'customer_phone' => '+15555550123',
         ], 'UTC');
 
         $this->assertTrue($result['success']);

@@ -353,6 +353,7 @@ final class AppointmentsJourneyTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $this->locationId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $this->locationId, 'role' => 'admin', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('location_days')->insert([
             'location_id' => $this->locationId,
@@ -395,6 +396,11 @@ final class AppointmentsJourneyTest extends CIUnitTestCase
         $this->seedSetting($db, 'business.work_start', '09:00', 'string');
         $this->seedSetting($db, 'business.work_end', '17:00', 'string');
         $this->seedSetting($db, 'notifications.default_language', 'English', 'string');
+        // Only enabled custom fields are persisted from the admin form.
+        $this->seedSetting($db, 'booking.custom_field_1_enabled', '1', 'boolean');
+        $this->seedSetting($db, 'booking.custom_field_1_title', 'Seat preference', 'string');
+        $this->seedSetting($db, 'booking.custom_field_1_type', 'text', 'string');
+        $this->seedSetting($db, 'booking.custom_field_1_required', '0', 'boolean');
     }
 
     private function seedSetting($db, string $key, string $value, string $type): void

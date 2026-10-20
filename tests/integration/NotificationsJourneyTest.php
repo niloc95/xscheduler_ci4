@@ -72,7 +72,8 @@ final class NotificationsJourneyTest extends CIUnitTestCase
         $response->assertSee('Delivery Logs');
         $response->assertSee('Filter Delivery Logs');
         $response->assertSee('SMTP unavailable');
-        $response->assertSee('Business 1');
+        // Single-business UX labels the scope generically (no raw business IDs).
+        $response->assertSee('Current Business');
     }
 
     public function testMarkReadAndMarkAllReadLinksRoundTripForAuthenticatedUsers(): void

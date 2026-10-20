@@ -70,8 +70,11 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
 
         $email = 'public.booking.' . uniqid('', true) . '@example.com';
         $phone = '+15551238888';
-        $initialStart = '2026-05-18T11:00:00+00:00';
-        $rescheduledStart = '2026-05-19T14:00:00+00:00';
+        // A Monday/Tuesday comfortably beyond the 24h reschedule window.
+        $monday = date('Y-m-d', strtotime('monday +2 weeks'));
+        $tuesday = date('Y-m-d', strtotime($monday . ' +1 day'));
+        $initialStart = $monday . 'T11:00:00+00:00';
+        $rescheduledStart = $tuesday . 'T14:00:00+00:00';
 
         $create = $this->withHeaders($this->csrfJsonHeaders())
             ->withBodyFormat('json')
@@ -171,8 +174,8 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
 
         $persisted = $db->table('appointments')->where('id', $appointmentId)->get()->getRowArray();
         $this->assertSame($newToken, $persisted['public_token'] ?? null);
-        $this->assertSame('2026-05-19 14:00:00', $persisted['start_at'] ?? null);
-        $this->assertSame('2026-05-19 14:30:00', $persisted['end_at'] ?? null);
+        $this->assertSame($tuesday . ' 14:00:00', $persisted['start_at'] ?? null);
+        $this->assertSame($tuesday . ' 14:30:00', $persisted['end_at'] ?? null);
         $this->assertSame('Rescheduled by customer', $persisted['notes'] ?? null);
     }
 
@@ -417,6 +420,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $this->providerId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $this->providerId, 'role' => 'provider', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('locations')->insert([
             'provider_id' => $this->providerId,
