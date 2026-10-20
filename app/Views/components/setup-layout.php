@@ -6,7 +6,7 @@
     <title><?= $this->renderSection('title') ?: 'WebScheduler' ?></title>
     
     <!-- Prevent FOUC: inline blocking script — runs synchronously before first paint -->
-    <script>!function(){var t=localStorage.getItem('xs-theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.toggle('dark',t==='dark');document.documentElement.style.colorScheme=t;if(t==='dark')document.documentElement.style.backgroundColor='#111827';document.documentElement.classList.add('xs-no-transition')}();</script>
+    <script {csp-script-nonce}>!function(){var t=localStorage.getItem('xs-theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.toggle('dark',t==='dark');document.documentElement.style.colorScheme=t;if(t==='dark')document.documentElement.style.backgroundColor='#111827';document.documentElement.classList.add('xs-no-transition')}();</script>
     
     <?php foreach (vite_css('resources/scss/app-consolidated.scss') as $css): ?>
     <link rel="stylesheet" href="<?= $css ?>">
@@ -30,6 +30,6 @@
     <!-- Scripts (setup.js is loaded by the setup view via the head section) -->
     <script type="module" src="<?= vite_js('resources/js/dark-mode.js') ?>"></script>
     <!-- Remove load-time FOUC guards after first paint -->
-    <script>requestAnimationFrame(function(){requestAnimationFrame(function(){document.documentElement.classList.remove('xs-no-transition');document.documentElement.style.backgroundColor='';document.documentElement.style.colorScheme=''})});</script>
+    <script {csp-script-nonce}>requestAnimationFrame(function(){requestAnimationFrame(function(){document.documentElement.classList.remove('xs-no-transition');document.documentElement.style.backgroundColor='';document.documentElement.style.colorScheme=''})});</script>
 </body>
 </html>

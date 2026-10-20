@@ -154,7 +154,7 @@ $routes->group('notifications', ['filter' => 'auth'], function($routes) {
     $routes->get('mark-read/(:segment)', 'Notifications::markAsRead/$1');
     $routes->post('mark-read/(:segment)', 'Notifications::markAsRead/$1');
     $routes->get('mark-all-read', 'Notifications::markAllAsRead');
-    $routes->post('mark-all-read', 'Notifications::markAllRead');
+    $routes->post('mark-all-read', 'Notifications::markAllAsRead');
     $routes->post('delete/(:segment)', 'Notifications::delete/$1');
     $routes->post('resend', 'Notifications::resend');
     $routes->get('settings', 'Notifications::settings');
