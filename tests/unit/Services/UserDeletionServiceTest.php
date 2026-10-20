@@ -46,6 +46,7 @@ final class UserDeletionServiceTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $adminId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $adminId, 'role' => 'admin', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('users')->insert([
             'name' => 'Guard Admin',
@@ -58,6 +59,7 @@ final class UserDeletionServiceTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $guardAdminId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $guardAdminId, 'role' => 'admin', 'created_at' => date('Y-m-d H:i:s')]);
 
         try {
             $service = new UserDeletionService(new UserModel(), new AuditLogModel());

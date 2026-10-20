@@ -22,6 +22,9 @@
             <text outputFile="php://stdout" showUncoveredFiles="false"/>
         </report>
     </coverage>
+    <extensions>
+        <bootstrap class="Tests\Support\PHPUnit\ResetStaticCachesExtension"/>
+    </extensions>
     <testsuites>
         <testsuite name="App">
             <directory>./tests</directory>

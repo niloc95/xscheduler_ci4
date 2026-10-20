@@ -327,6 +327,7 @@ final class CustomerManagementJourneyTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $this->serviceId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $this->serviceId, 'role' => 'admin', 'created_at' => date('Y-m-d H:i:s')]);
     }
 
     private function adminSession(): array

@@ -128,7 +128,7 @@ final class SettingsApiServiceTest extends CIUnitTestCase
         $this->assertSame('09:00:00', $payload['data']['friday']['startTime']);
     }
 
-    public function testUpdateSettingsIgnoresTransportKeysAndCountsPersistedRows(): void
+    public function testUpdateSettingsIgnoresTransportAndUnlistedBookingKeysAndCountsPersistedRows(): void
     {
         $calls = [];
         $settingModel = $this->createMock(SettingModel::class);
@@ -156,6 +156,8 @@ final class SettingsApiServiceTest extends CIUnitTestCase
 
         $result = $service->updateSettings([
             'general.company_name' => 'WebScheduler',
+            'booking.email_display' => true,
+            // Not on ALLOWED_BOOKING_KEYS: must be rejected, not persisted.
             'booking.fields' => ['email' => ['display' => true]],
             'csrf_test_name' => 'skip-me',
             'form_source' => 'settings-ui',
@@ -170,9 +172,9 @@ final class SettingsApiServiceTest extends CIUnitTestCase
                 'userId' => 7,
             ],
             [
-                'key' => 'booking.fields',
-                'value' => ['email' => ['display' => true]],
-                'type' => 'json',
+                'key' => 'booking.email_display',
+                'value' => true,
+                'type' => 'bool',
                 'userId' => 7,
             ],
         ], $calls);

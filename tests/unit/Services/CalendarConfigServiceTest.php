@@ -56,8 +56,9 @@ final class CalendarConfigServiceTest extends CIUnitTestCase
             ->method('getByKeys')
             ->willReturn([
                 'localization.locale' => 'fr',
-                'booking.day_start' => '07:30:00',
-                'booking.day_end' => '18:15:00',
+                // Timeline bounds come from the Settings UI keys (business.work_*).
+                'business.work_start' => '07:30:00',
+                'business.work_end' => '18:15:00',
                 'business.blocked_periods' => [
                     ['start' => '2026-05-01', 'end' => '2026-05-03'],
                 ],

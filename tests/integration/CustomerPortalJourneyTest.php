@@ -137,6 +137,7 @@ final class CustomerPortalJourneyTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $this->providerId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $this->providerId, 'role' => 'provider', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('services')->insert([
             'name' => 'Portal Service',
@@ -167,8 +168,8 @@ final class CustomerPortalJourneyTest extends CIUnitTestCase
             'provider_id' => $this->providerId,
             'service_id' => $this->serviceId,
             'hash' => hash('sha256', uniqid('portal_completed_', true)),
-            'start_at' => '2026-03-01 09:00:00',
-            'end_at' => '2026-03-01 09:45:00',
+            'start_at' => date('Y-m-d', strtotime('-30 days')) . ' 09:00:00',
+            'end_at' => date('Y-m-d', strtotime('-30 days')) . ' 09:45:00',
             'status' => 'completed',
             'notes' => 'Completed portal appointment',
             'created_at' => $now,
@@ -181,8 +182,8 @@ final class CustomerPortalJourneyTest extends CIUnitTestCase
             'provider_id' => $this->providerId,
             'service_id' => $this->serviceId,
             'hash' => hash('sha256', uniqid('portal_upcoming_', true)),
-            'start_at' => '2026-05-12 14:00:00',
-            'end_at' => '2026-05-12 14:45:00',
+            'start_at' => date('Y-m-d', strtotime('+30 days')) . ' 14:00:00',
+            'end_at' => date('Y-m-d', strtotime('+30 days')) . ' 14:45:00',
             'status' => 'confirmed',
             'notes' => 'Upcoming portal appointment',
             'created_at' => $now,

@@ -190,6 +190,7 @@ final class ServicesJourneyTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $this->existingCategoryId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $this->existingCategoryId, 'role' => 'admin', 'created_at' => date('Y-m-d H:i:s')]);
     }
 
     private function adminSession(): array

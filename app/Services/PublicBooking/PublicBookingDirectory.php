@@ -122,7 +122,7 @@ class PublicBookingDirectory
 
         return array_map(function (array $row) use ($gateways): array {
             $price      = (float) ($row['price'] ?? 0);
-            $depositPct = $row['deposit_percentage'] !== null ? (float) $row['deposit_percentage'] : null;
+            $depositPct = isset($row['deposit_percentage']) ? (float) $row['deposit_percentage'] : null;
             $depositAmt = ($row['payment_enabled'] ?? 0) && $depositPct
                 ? calculate_deposit_amount($price, $depositPct) : null;
             return [

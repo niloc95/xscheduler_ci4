@@ -181,7 +181,7 @@ final class SettingsBoundaryServicesTest extends CIUnitTestCase
                         ],
                     ],
                 ],
-            ], 55);
+            ], null); // no actor: xs_settings.updated_by has an FK to xs_users
 
             $this->assertSame('success', $result['type']);
             $this->assertSame('Message templates saved successfully.', $result['message']);
@@ -233,7 +233,7 @@ final class SettingsBoundaryServicesTest extends CIUnitTestCase
                         ],
                     ],
                 ],
-            ], 55);
+            ], null); // no actor: xs_settings.updated_by has an FK to xs_users
 
             $this->assertSame('error', $result['type']);
             $this->assertStringContainsString('appointment_confirmed.email', $result['message']);

@@ -437,6 +437,7 @@ class PublicBookingService
         }
 
         $slot = $this->normalizeSlotPayload($payload, $service['duration_min']);
+        $this->policy->assertBookableStart($slot['start']);
         $locationId = $this->resolveBookingLocation($provider['id'], $payload['location_id'] ?? null);
 
         $fieldConfig = $this->bookingSettings->getFieldConfiguration();
@@ -582,6 +583,7 @@ class PublicBookingService
         $provider = $this->resolveProviderFromPayload($providerPayload);
         $service = $this->resolveService($serviceId);
         $slot = $this->normalizeSlotPayload($payload, $service['duration_min']);
+        $this->policy->assertBookableStart($slot['start']);
         $newLocationId = $this->resolveBookingLocation($provider['id'], $payload['location_id'] ?? ($appointment['location_id'] ?? null));
 
         $customerId = $this->storeCustomer($payload, (int) $appointment['customer_id']);
@@ -792,26 +794,6 @@ class PublicBookingService
             'end' => $end,
             'date' => $start->format('Y-m-d'),
         ];
-    }
-
-    private function assertSlotAvailable(int $providerId, DateTimeImmutable $start, DateTimeImmutable $end, ?int $excludeAppointmentId, ?int $locationId = null): void
-    {
-        $result = $this->availability->isSlotAvailable(
-            $providerId,
-            $start->format('Y-m-d H:i:s'),
-            $end->format('Y-m-d H:i:s'),
-            $this->localization->getTimezone(),
-            $excludeAppointmentId,
-            $locationId
-        );
-
-        if (!$result['available']) {
-            throw new PublicBookingException(
-                $result['reason'] ?: 'Selected slot is no longer available.',
-                409,
-                ['slot' => 'unavailable']
-            );
-        }
     }
 
     private function resolveBookingFailureStatus(array $result): int

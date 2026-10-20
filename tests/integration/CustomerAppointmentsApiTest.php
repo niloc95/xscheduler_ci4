@@ -20,6 +20,7 @@ final class CustomerAppointmentsApiTest extends CIUnitTestCase
     private int $inactiveServiceId;
     private int $customerId;
     private string $customerHash;
+    private int $adminId;
     private array $appointmentIds = [];
 
     protected function setUp(): void
@@ -29,11 +30,16 @@ final class CustomerAppointmentsApiTest extends CIUnitTestCase
         $this->ensureSetupFlag();
         $this->configureTestingDatabaseEnvironment();
         $this->seedFixtureData();
+        $this->actAsAdmin();
     }
 
     protected function tearDown(): void
     {
         $db = \Config\Database::connect('tests');
+
+        if (isset($this->adminId)) {
+            $db->table('users')->where('id', $this->adminId)->delete();
+        }
 
         if ($this->appointmentIds !== []) {
             $db->table('appointments')->whereIn('id', $this->appointmentIds)->delete();
@@ -161,6 +167,7 @@ final class CustomerAppointmentsApiTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $this->providerId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $this->providerId, 'role' => 'provider', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('users')->insert([
             'name' => 'Inactive Hash API Provider',
@@ -173,6 +180,7 @@ final class CustomerAppointmentsApiTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $this->inactiveProviderId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $this->inactiveProviderId, 'role' => 'provider', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('services')->insert([
             'name' => 'Hash API Service',
@@ -300,4 +308,42 @@ final class CustomerAppointmentsApiTest extends CIUnitTestCase
             $_SERVER[$key] = $value;
         }
     }
+
+    /**
+     * /api/* routes require api_auth (session or Bearer token) since the
+     * external REST API landed; run these journeys as a signed-in admin.
+     */
+    private function actAsAdmin(): void
+    {
+        $db = \Config\Database::connect('tests');
+        $now = date('Y-m-d H:i:s');
+        $email = 'api-journey-admin-' . uniqid('', true) . '@example.com';
+
+        $db->table('users')->insert([
+            'name' => 'API Journey Admin',
+            'email' => $email,
+            'password_hash' => password_hash('password123', PASSWORD_DEFAULT),
+            'role' => 'admin',
+            'status' => 'active',
+            'is_active' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $this->adminId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $this->adminId, 'role' => 'admin', 'created_at' => $now]);
+
+        $this->withSession([
+            'isLoggedIn' => true,
+            'user_id' => $this->adminId,
+            'user' => [
+                'id' => $this->adminId,
+                'name' => 'API Journey Admin',
+                'email' => $email,
+                'role' => 'admin',
+                'roles' => ['admin'],
+                'active_role' => 'admin',
+            ],
+        ]);
+    }
+
 }

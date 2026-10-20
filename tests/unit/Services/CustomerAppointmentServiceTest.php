@@ -31,6 +31,7 @@ final class CustomerAppointmentServiceTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $providerId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $providerId, 'role' => 'provider', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('services')->insert([
             'name' => 'Autofill Service',
@@ -130,6 +131,7 @@ final class CustomerAppointmentServiceTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $providerId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $providerId, 'role' => 'provider', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('services')->insert([
             'name' => 'Hash Lookup Service',
@@ -367,6 +369,7 @@ final class CustomerAppointmentServiceTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $providerId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $providerId, 'role' => 'provider', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('services')->insert([
             'name' => 'History Service',
@@ -481,6 +484,7 @@ final class CustomerAppointmentServiceTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $providerId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $providerId, 'role' => 'provider', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('services')->insert([
             'name' => 'Upcoming Service',
@@ -594,6 +598,7 @@ final class CustomerAppointmentServiceTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $providerId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $providerId, 'role' => 'provider', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('services')->insert([
             'name' => 'Past Service',

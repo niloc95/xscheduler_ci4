@@ -112,6 +112,7 @@ final class SearchControllerTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $this->adminId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $this->adminId, 'role' => 'admin', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('services')->insert([
             'name' => 'Searchable Facial',
@@ -136,6 +137,7 @@ final class SearchControllerTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $this->providerId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $this->providerId, 'role' => 'provider', 'created_at' => date('Y-m-d H:i:s')]);
 
         $db->table('customers')->insert([
             'first_name' => 'Harper',

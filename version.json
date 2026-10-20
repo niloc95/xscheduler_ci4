@@ -1,7 +1,7 @@
 {
-  "version": "2.5.1",
-  "build": "20260727115728",
+  "version": "2.7.0",
+  "build": "20261020113101",
   "min_version": "1.0.0",
   "requires_migration": true,
-  "released_at": "2026-07-27T11:57:28.938Z"
+  "released_at": "2026-10-20T11:31:01.472Z"
 }

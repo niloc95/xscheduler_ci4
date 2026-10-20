@@ -126,8 +126,8 @@ final class PublicBookingServiceTest extends CIUnitTestCase
             'provider_id' => 3,
             'service_id' => 22,
             'customer_id' => 55,
-            'start_at' => '2025-12-01 10:00:00',
-            'end_at' => '2025-12-01 10:30:00',
+            'start_at' => self::slotDay() . ' 10:00:00',
+            'end_at' => self::slotDay() . ' 10:30:00',
             'status' => 'pending',
             'notes' => 'Prefers telehealth',
         ]);
@@ -138,7 +138,7 @@ final class PublicBookingServiceTest extends CIUnitTestCase
             ->with($this->callback(static function (array $payload): bool {
                 return $payload['provider_id'] === 3
                     && $payload['service_id'] === 22
-                    && $payload['appointment_date'] === '2025-12-01'
+                    && $payload['appointment_date'] === self::slotDay()
                     && $payload['appointment_time'] === '10:00'
                     && $payload['customer_first_name'] === 'Pat'
                     && $payload['customer_email'] === 'guest@example.com';
@@ -164,7 +164,7 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         $result = $service->createBooking([
             'provider_id' => 3,
             'service_id' => 22,
-            'slot_start' => '2025-12-01T10:00:00Z',
+            'slot_start' => self::slotDay() . 'T10:00:00Z',
             'first_name' => 'Pat',
             'email' => 'guest@example.com',
             'notes' => 'Prefers telehealth',
@@ -174,7 +174,7 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         $this->assertSame('Initial Consult', $result['service']['name']);
         $this->assertSame('Dr. Patel', $result['provider']['name']);
         $this->assertSame('guest@example.com', $result['customer']['email']);
-        $this->assertSame('2025-12-01T10:00:00+00:00', $result['start']);
+        $this->assertSame(self::slotDay() . 'T10:00:00+00:00', $result['start']);
         $this->assertNotEmpty($result['display_range']);
     }
 
@@ -283,7 +283,7 @@ final class PublicBookingServiceTest extends CIUnitTestCase
             $this->createMock(AppointmentBookingService::class)
         );
 
-        $result = $service->lookupAppointment('token-123', 'lookup@example.com');
+        $result = $service->lookupAppointment('token-123', 'lookup@example.com', '+15559998888');
 
         $this->assertSame('Dr. Singh', $result['provider']['name']);
         $this->assertSame('Follow-up', $result['service']['name']);
@@ -300,7 +300,7 @@ final class PublicBookingServiceTest extends CIUnitTestCase
             'start_at' => $startAt,
             'end_at' => (new \DateTimeImmutable($startAt, new \DateTimeZone('UTC')))->modify('+45 minutes')->format('Y-m-d H:i:s'),
             'status' => 'confirmed', 'notes' => null,
-            'public_token' => 'token-far', 'customer_email' => 'test@example.com', 'customer_phone' => '',
+            'public_token' => 'token-far', 'customer_email' => 'test@example.com', 'customer_phone' => '+15550001111',
         ];
 
         $appointments = $this->getMockBuilder(AppointmentModel::class)
@@ -337,7 +337,7 @@ final class PublicBookingServiceTest extends CIUnitTestCase
             $this->createMock(AppointmentBookingService::class)
         );
 
-        $result = $service->lookupAppointment('token-far', 'test@example.com');
+        $result = $service->lookupAppointment('token-far', 'test@example.com', '+15550001111');
         $this->assertTrue($result['can_reschedule'], 'Appointment 48h out should be reschedulable with 24h policy');
         $this->assertTrue($result['can_cancel'], 'Appointment 48h out should be cancellable with 24h policy');
     }
@@ -350,7 +350,7 @@ final class PublicBookingServiceTest extends CIUnitTestCase
             'start_at' => $startAt,
             'end_at' => (new \DateTimeImmutable($startAt, new \DateTimeZone('UTC')))->modify('+45 minutes')->format('Y-m-d H:i:s'),
             'status' => 'confirmed', 'notes' => null,
-            'public_token' => 'token-close', 'customer_email' => 'test@example.com', 'customer_phone' => '',
+            'public_token' => 'token-close', 'customer_email' => 'test@example.com', 'customer_phone' => '+15550001111',
         ];
 
         $appointments = $this->getMockBuilder(AppointmentModel::class)
@@ -387,7 +387,7 @@ final class PublicBookingServiceTest extends CIUnitTestCase
             $this->createMock(AppointmentBookingService::class)
         );
 
-        $result = $service->lookupAppointment('token-close', 'test@example.com');
+        $result = $service->lookupAppointment('token-close', 'test@example.com', '+15550001111');
         $this->assertFalse($result['can_reschedule'], 'Appointment 6h out should NOT be reschedulable with 24h policy');
         $this->assertFalse($result['can_cancel'], 'Appointment 6h out should NOT be cancellable with 24h policy');
     }
@@ -494,13 +494,17 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         $service->createBooking([
             'provider_id' => 3,
             'service_id' => 22,
-            'slot_start' => '2025-12-01T10:00:00Z',
+            'slot_start' => self::slotDay() . 'T10:00:00Z',
             'first_name' => 'Pat',
             'email' => 'guest@example.com',
         ]);
     }
 
-    public function testLookupAppointmentAcceptsPhoneVerificationWhenEmailMissing(): void
+    /**
+     * Since the April 2026 hardening, lookup requires BOTH stored email and phone
+     * to match; a phone-only record/request must be rejected.
+     */
+    public function testLookupAppointmentRejectsPhoneOnlyVerification(): void
     {
         $appointmentRecord = [
             'id' => 11,
@@ -547,10 +551,10 @@ final class PublicBookingServiceTest extends CIUnitTestCase
             $this->createMock(AppointmentBookingService::class)
         );
 
-        $result = $service->lookupAppointment('token-phone', null, '+15559998888');
+        $this->expectException(PublicBookingException::class);
+        $this->expectExceptionMessage('Contact verification failed.');
 
-        $this->assertSame('+1 (555) 999-8888', $result['customer']['phone']);
-        $this->assertSame('token-phone', $result['reference']);
+        $service->lookupAppointment('token-phone', null, '+15559998888');
     }
 
     public function testRescheduleRejectsAppointmentsInsidePolicyWindow(): void
@@ -613,6 +617,7 @@ final class PublicBookingServiceTest extends CIUnitTestCase
 
         $service->reschedule('token-reschedule', [
             'email' => 'lookup@example.com',
+            'phone' => '+15559998888',
             'provider_id' => 9,
             'service_id' => 4,
             'slot_start' => (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify('+2 days')->format(DATE_ATOM),
@@ -689,6 +694,7 @@ final class PublicBookingServiceTest extends CIUnitTestCase
 
         $service->cancel('token-cancel', [
             'email' => 'lookup@example.com',
+            'phone' => '+15559998888',
         ]);
     }
 
@@ -968,5 +974,13 @@ final class PublicBookingServiceTest extends CIUnitTestCase
                 };
             }
         };
+    }
+
+    /**
+     * A bookable future date (public bookings reject past and beyond-horizon slots).
+     */
+    private static function slotDay(): string
+    {
+        return date('Y-m-d', strtotime('+14 days'));
     }
 }

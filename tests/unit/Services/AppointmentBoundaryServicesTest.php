@@ -158,6 +158,7 @@ final class AppointmentBoundaryServicesTest extends CIUnitTestCase
                 [
                     'appointment_date' => '2026-05-20',
                     'appointment_time' => '14:00',
+                    'booking_channel' => 'api',
                 ],
                 $this->isType('string'),
                 'appointment_rescheduled',
@@ -200,7 +201,7 @@ final class AppointmentBoundaryServicesTest extends CIUnitTestCase
             ->method('updateAppointment')
             ->with(
                 21,
-                ['status' => 'no-show'],
+                ['status' => 'no-show', 'booking_channel' => 'api'],
                 $this->isType('string'),
                 'appointment_no_show',
                 ['email', 'whatsapp']
@@ -233,7 +234,7 @@ final class AppointmentBoundaryServicesTest extends CIUnitTestCase
             ->method('updateAppointment')
             ->with(
                 33,
-                ['status' => 'cancelled'],
+                ['status' => 'cancelled', 'booking_channel' => 'api'],
                 $this->isType('string'),
                 'appointment_cancelled',
                 ['email', 'whatsapp']

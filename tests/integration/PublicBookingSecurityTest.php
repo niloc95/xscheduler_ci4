@@ -98,7 +98,7 @@ final class PublicBookingSecurityTest extends CIUnitTestCase
                 'location_id' => $this->locationId,
                 // Deliberately send a service that is NOT assigned to this provider.
                 'service_id'  => $this->otherServiceId,
-                'slot_start'  => '2026-05-20T09:00:00+00:00',
+                'slot_start'  => self::slotDay() . 'T09:00:00+00:00',
                 'first_name'  => 'Tamper',
                 'last_name'   => 'User',
                 'email'       => $email,
@@ -126,7 +126,7 @@ final class PublicBookingSecurityTest extends CIUnitTestCase
                 'provider_id' => $this->providerId,
                 'location_id' => $this->locationId,
                 'service_id'  => $this->serviceId,
-                'slot_start'  => '2026-05-20T10:00:00+00:00',
+                'slot_start'  => self::slotDay() . 'T10:00:00+00:00',
                 'first_name'  => 'Bot',
                 'last_name'   => 'Spammer',
                 'email'       => 'bot@example.com',
@@ -151,7 +151,7 @@ final class PublicBookingSecurityTest extends CIUnitTestCase
                 'provider_id' => $this->providerId,
                 'location_id' => $this->locationId,
                 'service_id'  => $this->serviceId,
-                'slot_start'  => '2026-05-20T11:00:00+00:00',
+                'slot_start'  => self::slotDay() . 'T11:00:00+00:00',
                 'first_name'  => 'Legit',
                 'last_name'   => 'User',
                 'email'       => $email,
@@ -177,7 +177,7 @@ final class PublicBookingSecurityTest extends CIUnitTestCase
                 'provider_id' => $this->providerId,
                 'location_id' => $this->locationId,
                 'service_id'  => $this->serviceId,
-                'slot_start'  => '2026-05-20T11:30:00+00:00',
+                'slot_start'  => self::slotDay() . 'T11:30:00+00:00',
                 'first_name'  => 'Phone',
                 'last_name'   => 'Invalid',
                 'email'       => 'phone-invalid-' . uniqid('', true) . '@example.com',
@@ -467,6 +467,7 @@ final class PublicBookingSecurityTest extends CIUnitTestCase
             'updated_at'    => $now,
         ]);
         $this->providerId = (int) $db->insertID();
+        $db->table('user_roles')->ignore(true)->insert(['user_id' => $this->providerId, 'role' => 'provider', 'created_at' => date('Y-m-d H:i:s')]);
 
         // Location
         $db->table('locations')->insert([
@@ -573,5 +574,13 @@ final class PublicBookingSecurityTest extends CIUnitTestCase
             'setting_key' => $key,
             'created_at'  => $now,
         ]);
+    }
+
+    /**
+     * A Wednesday safely inside the booking window (fixture hours are weekday-based).
+     */
+    private static function slotDay(): string
+    {
+        return date('Y-m-d', strtotime('wednesday +2 weeks'));
     }
 }
