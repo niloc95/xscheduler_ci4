@@ -10,6 +10,7 @@
  * URL instead of trying to parse the 1 MB UMD bundle as a module.
  */
 import redocRuntimeUrl from '../redoc/redoc.standalone.js?url';
+import '../scss/pages/developers.scss';
 
 function initRedoc() {
   const container = document.getElementById('redoc-container');

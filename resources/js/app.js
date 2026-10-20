@@ -39,10 +39,19 @@ import { initSettingsPageEnhancements } from './modules/settings/settings-page.j
 import { initIntegrationHub } from './modules/settings/integration-hub.js';
 import { initCustomerManagementSearch } from './modules/customer-management/customer-search.js';
 import { initProviderSchedule } from './modules/user-management/provider-schedule.js';
+import { initProviderLocations } from './modules/user-management/provider-locations.js';
+import { initProviderStaffManager } from './modules/user-management/provider-staff.js';
+import { initStaffProvidersManager } from './modules/user-management/staff-providers.js';
+import { initUserForm } from './modules/user-management/user-form.js';
+import { initUserManagementList } from './modules/user-management/user-list.js';
+import { initDashboardRefresh } from './modules/dashboard/dashboard-refresh.js';
+import { initServiceCategoryModal } from './modules/services/category-modal.js';
+import { initFlashMessages } from './modules/app/flash-messages.js';
+import { escapeHtml } from './utils/html.js';
 import { initProfilePage } from './modules/profile/profile-page.js';
 import { bindAppLifecycleEvents } from './modules/app-lifecycle.js';
 import { initPhoneCountrySelectors } from './utils/phone-country-selector.js';
-import { initConfirmActions, initHelpFaq, initPasswordToggles, initProviderPicker, initServiceManagementForms, togglePassword } from './modules/app/shared-ui.js';
+import { initConfirmActions, initFilterPanelToggles, initHelpFaq, initPasswordToggles, initProviderPicker, initServiceManagementForms, togglePassword } from './modules/app/shared-ui.js';
 import { getAvatarInitials, getDisplayName } from './utils/avatar.js';
 import { initInactivityMonitor } from './modules/auth/inactivity-monitor.js';
 
@@ -60,13 +69,8 @@ import './currency.js';
 
 import { XSConfirm } from './utils/confirm.js';
 
-// Define global escapeHtml utility — single source of truth
-window.xsEscapeHtml = function(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-};
+// Global escapeHtml for non-module callers — same implementation as utils/html.js.
+window.xsEscapeHtml = escapeHtml;
 
 // Export shared time-slot UI initializer to window so PHP views can call it
 import { initTimeSlotsUI } from './modules/appointments/time-slots-ui.js';
@@ -132,8 +136,12 @@ function initializeComponents() {
     // Initialize global header search
     initGlobalSearch();
 
-    // Initialize provider-card slot filters on dashboard landing.
+    // Initialize provider-card slot filters and live metrics/schedule refresh on dashboard landing.
     initDashboardProviderCards();
+    initDashboardRefresh();
+
+    // Server-rendered flash messages (auto-dismiss + close button).
+    initFlashMessages(document);
     
     // Initialize appointment booking form if present
     initAppointmentForm();
@@ -145,16 +153,23 @@ function initializeComponents() {
     // Initialize customer management live search when that view is present.
     initCustomerManagementSearch();
 
-    // Initialize extracted provider schedule UI when user-management forms are present.
+    // Initialize user-management list, forms, and provider/staff sub-sections when present.
+    initUserManagementList();
+    initUserForm();
     initProviderSchedule();
+    initProviderLocations();
+    initProviderStaffManager();
+    initStaffProvidersManager();
 
     // Initialize service create/edit UI when those forms are present
     initServiceManagementForms();
+    initServiceCategoryModal();
 
     // Initialize shared view interactions extracted from inline handlers.
     initHelpFaq(document);
     initConfirmActions(document);
     initPasswordToggles(document);
+    initFilterPanelToggles(document);
 
     // Add country-code selectors to all canonical phone fields.
     initPhoneCountrySelectors(document);

@@ -145,7 +145,44 @@ export function initServiceManagementForms() {
     window.initProviderPicker(form);
   }
 
+  // Deposit/payment fields only apply when payment is enabled for the service.
+  const paymentToggle = document.getElementById('paymentEnabledToggle');
+  const paymentFields = document.getElementById('paymentFields');
+  if (paymentToggle && paymentFields && paymentToggle.dataset.paymentToggleBound !== 'true') {
+    paymentToggle.dataset.paymentToggleBound = 'true';
+    paymentToggle.addEventListener('change', () => {
+      paymentFields.classList.toggle('hidden', !paymentToggle.checked);
+    });
+  }
+
+  // Published slugs are read-only until an authorised user ticks "unlock".
+  const slugUnlock = form.querySelector('[data-slug-unlock]');
+  const slugInput = form.querySelector('input[name="slug"]');
+  if (slugUnlock && slugInput && slugUnlock.dataset.slugUnlockBound !== 'true') {
+    slugUnlock.dataset.slugUnlockBound = 'true';
+    const refresh = () => { slugInput.readOnly = !slugUnlock.checked; };
+    slugUnlock.addEventListener('change', refresh);
+    refresh();
+  }
+
   form.dataset.serviceViewInitialized = 'true';
+}
+
+/**
+ * Generic show/hide for filter panels: a button with
+ * data-filter-toggle="<panel id>" toggles that panel and its aria-expanded.
+ */
+export function initFilterPanelToggles(root = document) {
+  root.querySelectorAll('[data-filter-toggle]').forEach((button) => {
+    if (button.dataset.filterToggleBound === 'true') return;
+    button.dataset.filterToggleBound = 'true';
+    button.addEventListener('click', () => {
+      const panel = document.getElementById(button.dataset.filterToggle);
+      if (!panel) return;
+      panel.classList.toggle('hidden');
+      button.setAttribute('aria-expanded', String(!panel.classList.contains('hidden')));
+    });
+  });
 }
 
 export function togglePassword(fieldId) {

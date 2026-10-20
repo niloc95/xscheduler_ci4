@@ -360,45 +360,4 @@
         </div>
     </div>
 
-<script {csp-script-nonce}>
-// Handle role checkbox changes for dynamic section visibility
-document.addEventListener('DOMContentLoaded', function() {
-    const roleCheckboxes = document.querySelectorAll('input[name="roles[]"]');
-    
-    function updateSectionVisibility() {
-        const isProvider = document.getElementById('role_provider')?.checked || false;
-        const isStaff = document.getElementById('role_staff')?.checked || false;
-        
-        // Show/hide provider sections
-        const providerSchedule = document.getElementById('providerScheduleSection');
-        const providerAssignments = document.getElementById('providerAssignmentsSection');
-        const providerPublicProfile = document.getElementById('providerPublicProfileSection');
-        
-        if (providerSchedule) {
-            providerSchedule.classList.toggle('hidden', !isProvider);
-        }
-        if (providerAssignments) {
-            providerAssignments.classList.toggle('hidden', !isProvider);
-        }
-        if (providerPublicProfile) {
-            providerPublicProfile.classList.toggle('hidden', !isProvider);
-        }
-        
-        // Show/hide staff assignment sections
-        const staffAssignments = document.getElementById('staffAssignmentsSection');
-        if (staffAssignments) {
-            staffAssignments.classList.toggle('hidden', !isStaff);
-        }
-    }
-    
-    // Add event listeners to all role checkboxes
-    roleCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', updateSectionVisibility);
-    });
-    
-    // Initialize visibility on page load
-    updateSectionVisibility();
-});
-</script>
-
 <?= $this->endSection() ?>

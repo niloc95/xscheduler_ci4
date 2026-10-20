@@ -380,14 +380,4 @@ $hasActiveFilters = !empty($filters['q']) || !empty($filters['category']) || !em
 
 <?= $this->endSection() ?>
 
-<?= $this->section('scripts') ?>
-<script {csp-script-nonce}>
-document.querySelector('[data-filter-toggle="services-filter-panel"]')?.addEventListener('click', function () {
-    var panel = document.getElementById('services-filter-panel');
-    if (!panel) return;
-    panel.classList.toggle('hidden');
-    this.setAttribute('aria-expanded', String(!panel.classList.contains('hidden')));
-});
-</script>
-<?= $this->endSection() ?>
 
