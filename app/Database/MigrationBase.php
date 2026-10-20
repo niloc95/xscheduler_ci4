@@ -35,6 +35,18 @@ abstract class MigrationBase extends Migration
     /** @var Forge */
     protected $forge;
 
+    public function __construct(?Forge $forge = null)
+    {
+        parent::__construct($forge);
+
+        // CI4 caches getFieldNames()/fieldExists() per connection and Forge never
+        // invalidates it. When migrations roll back and re-run in one process
+        // (test refresh, updater), a column dropped by down() still looked
+        // present to the next up(), which then skipped re-adding it. The runner
+        // builds a fresh instance per migration, so start each from live schema.
+        $this->db->resetDataCache();
+    }
+
     /**
      * Normalise Forge field definitions before they are passed to Forge.
      * The original array is not mutated.

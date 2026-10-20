@@ -136,6 +136,25 @@ class PublicBookingPolicy
         return $value > 0 ? $value : 60;
     }
 
+    /**
+     * Reject slots the public booking page would never offer: in the past, or
+     * beyond the booking horizon (business.future_limit days). The slot picker
+     * already hides these; this stops hand-crafted requests.
+     */
+    public function assertBookableStart(DateTimeImmutable $start): void
+    {
+        $now = new DateTimeImmutable('now', $start->getTimezone());
+
+        if ($start <= $now) {
+            throw new PublicBookingException('That time has already passed. Please choose a future slot.', 422, ['slot_start' => 'past']);
+        }
+
+        $horizon = $now->setTime(23, 59, 59)->modify('+' . $this->getFutureLimitDays() . ' days');
+        if ($start > $horizon) {
+            throw new PublicBookingException('That date is too far ahead to book online.', 422, ['slot_start' => 'beyond_limit']);
+        }
+    }
+
     public function getLegalPolicyContext(): array
     {
         $legal = $this->settings->getByKeys([

@@ -65,8 +65,6 @@ class SettingModel extends BaseModel
     protected $table = 'xs_settings';
     protected $primaryKey = 'id';
 
-    private static ?bool $hasUpdatedByColumn = null;
-
     protected $allowedFields = [
         'setting_key',
         'setting_value',

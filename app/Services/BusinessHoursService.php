@@ -97,6 +97,13 @@ class BusinessHoursService
         'saturday' => 6
     ];
 
+    private ?LocalizationSettingsService $localization;
+
+    public function __construct(?LocalizationSettingsService $localization = null)
+    {
+        $this->localization = $localization;
+    }
+
     /**
      * Validate if an appointment time is within business hours
      * 
@@ -234,7 +241,8 @@ class BusinessHoursService
             return 'Closed';
         }
 
-        $loc = new LocalizationSettingsService();
+        $this->localization ??= new LocalizationSettingsService();
+        $loc = $this->localization;
         return $loc->formatTimeForDisplay($hours['start_time'])
             . ' - '
             . $loc->formatTimeForDisplay($hours['end_time']);
