@@ -148,8 +148,9 @@ function copyDirectoryWithFilter(src, dest, excludePatterns = [], root = null) {
         const destPath = path.join(dest, item);
         const relPath = path.relative(rootBase, srcPath).replace(/\\/g, '/');
 
-        // Check if item matches any exclude pattern by name or by relative path
-        const shouldExclude = excludePatterns.some(pattern => {
+        // Check if item matches any exclude pattern by name or by relative path.
+        // macOS Finder metadata is never shipped.
+        const shouldExclude = item === '.DS_Store' || excludePatterns.some(pattern => {
             if (typeof pattern === 'string') {
                 return item === pattern || relPath === pattern;
             } else if (pattern instanceof RegExp) {
@@ -193,6 +194,9 @@ essentialFiles.forEach(({ src, dest }) => {
                         /^session\/.*$/i,
                         /^backups\/.*$/i,
                         /^exports\/.*$/i,
+                        // Locally uploaded files (profile images, logos, pending updater ZIPs)
+                        // are environment data, not code. Keep only the directory guards.
+                        /^uploads\/(?!index\.html$|\.gitkeep$).+/i,
                         'upload-debug.log'
                     ];
                     copyDirectoryWithFilter(source, destination, excludePatterns);
@@ -227,6 +231,18 @@ essentialFiles.forEach(({ src, dest }) => {
                     ];
                     copyDirectoryWithFilter(source, destination, excludePatterns);
                     console.log(`✅ Copied ${src} → ${dest} (excluded dev-only packages)`);
+                } else if (src === 'public') {
+                    const excludePatterns = [
+                        // Stray session store from an old misconfiguration — never ship
+                        // (and never serve) session files from the web root.
+                        'writable',
+                        // User-uploaded avatars and branding live on the server; only the
+                        // bundled defaults and directory guards belong in a release.
+                        /^assets\/(profile|providers)\/(?!\.gitignore$|index\.html$).+/i,
+                        /^assets\/settings\/(?!default-[\w-]+\.svg$|\.gitignore$|index\.html$).+/i,
+                    ];
+                    copyDirectoryWithFilter(source, destination, excludePatterns);
+                    console.log(`✅ Copied ${src} → ${dest} (excluded uploads and stray session files)`);
                 } else {
                     fs.cpSync(source, destination, { recursive: true });
                     console.log(`✅ Copied ${src} → ${dest}`);
